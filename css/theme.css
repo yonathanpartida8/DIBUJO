@@ -1,0 +1,152 @@
+/* ============================================================
+   Design tokens — warm, romantic pastel system.
+   Themes: pastel (default), light, dark.
+   Applied via [data-theme] on <body>.
+   ============================================================ */
+
+:root {
+  /* Type scale */
+  --font: "Nunito", "Quicksand", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-round: "Quicksand", "Nunito", system-ui, sans-serif;
+
+  /* Radii — soft & rounded everywhere */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 26px;
+  --r-xl: 34px;
+  --r-pill: 999px;
+
+  /* Spacing rhythm (generous) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px;
+  --s-5: 22px; --s-6: 30px; --s-7: 40px; --s-8: 56px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-soft: cubic-bezier(0.34, 1.2, 0.64, 1);
+  --dur-1: 0.14s; --dur-2: 0.24s; --dur-3: 0.4s;
+
+  /* Safe areas */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+
+  /* Accent pastels (shared across themes) */
+  --rose: #f7b7c4;
+  --rose-deep: #ef92a6;
+  --blush: #ffd9e4;
+  --lav: #cbb6e8;
+  --lav-deep: #a98fd4;
+  --mint: #b8e0d2;
+  --peach: #ffd7bd;
+  --sky: #bcd8f2;
+  --butter: #fdeec2;
+}
+
+/* ---------- Pastel (default, warm cream) ---------- */
+body[data-theme="pastel"] {
+  --bg: #fbeef1;
+  --bg-grad: radial-gradient(120% 90% at 10% 0%, #fdeef2 0%, #f7e9f3 45%, #efe7f7 100%);
+  --surface: #ffffff;
+  --surface-2: #fdf5f8;
+  --surface-3: #f6ecf3;
+  --surface-inset: #f3e9f1;
+  --line: #efdfe8;
+  --line-2: #e6d3e0;
+  --text: #5a4e58;
+  --text-2: #8a7d88;
+  --text-3: #b3a6b0;
+  --primary: #ef92a6;
+  --primary-ink: #ffffff;
+  --primary-soft: #ffe1e9;
+  --accent: #a98fd4;
+  --accent-soft: #ece2fb;
+  --focus: #d9b7e6;
+  --sel: rgba(247, 183, 196, 0.45);
+  --shadow-sm: 0 2px 8px rgba(180, 140, 165, 0.14);
+  --shadow-md: 0 8px 24px rgba(180, 140, 165, 0.18);
+  --shadow-lg: 0 18px 48px rgba(160, 120, 150, 0.22);
+  --glass: rgba(255, 255, 255, 0.72);
+  color-scheme: light;
+}
+
+/* ---------- Light (cleaner, cooler) ---------- */
+body[data-theme="light"] {
+  --bg: #f6f5f9;
+  --bg-grad: linear-gradient(180deg, #fafaff 0%, #f3f2f8 100%);
+  --surface: #ffffff;
+  --surface-2: #f8f7fc;
+  --surface-3: #f0eff5;
+  --surface-inset: #eeecf4;
+  --line: #eae8f0;
+  --line-2: #ded9e6;
+  --text: #4a4552;
+  --text-2: #857f8d;
+  --text-3: #b0aab8;
+  --primary: #e58aa0;
+  --primary-ink: #ffffff;
+  --primary-soft: #fce4ea;
+  --accent: #9d86cf;
+  --accent-soft: #eae2f8;
+  --focus: #c9a7d6;
+  --sel: rgba(200, 170, 220, 0.4);
+  --shadow-sm: 0 2px 8px rgba(80, 70, 110, 0.08);
+  --shadow-md: 0 8px 24px rgba(80, 70, 110, 0.1);
+  --shadow-lg: 0 18px 48px rgba(70, 60, 100, 0.14);
+  --glass: rgba(255, 255, 255, 0.75);
+  color-scheme: light;
+}
+
+/* ---------- Dark (soft, muted — never harsh) ---------- */
+body[data-theme="dark"] {
+  --bg: #221d28;
+  --bg-grad: radial-gradient(120% 90% at 10% 0%, #2a2330 0%, #241f2c 55%, #201b27 100%);
+  --surface: #2e2836;
+  --surface-2: #332c3c;
+  --surface-3: #3a3244;
+  --surface-inset: #272130;
+  --line: #3d3546;
+  --line-2: #4a4154;
+  --text: #ece6f0;
+  --text-2: #b3a9bd;
+  --text-3: #7f7488;
+  --primary: #f0a6b6;
+  --primary-ink: #3a2530;
+  --primary-soft: #45303a;
+  --accent: #c4a9ec;
+  --accent-soft: #3a3150;
+  --focus: #c4a9ec;
+  --sel: rgba(240, 166, 182, 0.35);
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5);
+  --glass: rgba(46, 40, 54, 0.72);
+  color-scheme: dark;
+}
+
+/* Follow system when user chose "auto" (data-theme reflects resolved value in JS). */
+
+/* UI scale (Ajustes → tamaño de interfaz) */
+body[data-uiscale="s"]  { font-size: 14.5px; }
+body[data-uiscale="m"]  { font-size: 16px; }
+body[data-uiscale="l"]  { font-size: 17.5px; }
+body[data-uiscale="xl"] { font-size: 19px; }
+
+/* Reduced motion / animations off */
+body[data-animations="off"] *, body[data-animations="off"] *::before, body[data-animations="off"] *::after {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  background-image: var(--bg-grad);
+  background-attachment: fixed;
+  color: var(--text);
+  transition: background-color var(--dur-3) var(--ease), color var(--dur-2) var(--ease);
+}

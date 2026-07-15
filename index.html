@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6d7de" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#2a2530" media="(prefers-color-scheme: dark)" />
+  <meta name="description" content="Dibuja junto a tu persona favorita. Un espacio creativo, íntimo y cálido para parejas." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Dibujo" />
+  <title>Dibujo · para dos</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./assets/icons/favicon.png" />
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="./css/reset.css" />
+  <link rel="stylesheet" href="./css/theme.css" />
+  <link rel="stylesheet" href="./css/layout.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/canvas.css" />
+</head>
+<body data-theme="pastel">
+  <!-- Splash / boot -->
+  <div id="splash" class="splash">
+    <div class="splash-heart" aria-hidden="true">
+      <svg viewBox="0 0 32 32" width="88" height="88"><path d="M16 28C16 28 4 20.5 4 12.5C4 8.4 7.1 5.5 10.8 5.5C13 5.5 15 6.7 16 8.6C17 6.7 19 5.5 21.2 5.5C24.9 5.5 28 8.4 28 12.5C28 20.5 16 28 16 28Z"/></svg>
+    </div>
+    <div class="splash-title">Dibujo</div>
+    <div class="splash-sub">un lienzo para dos</div>
+  </div>
+
+  <!-- App root -->
+  <div id="app" class="app" hidden>
+    <main id="view-root" class="view-root"></main>
+
+    <!-- Bottom navigation -->
+    <nav id="tabbar" class="tabbar" aria-label="Navegación principal">
+      <button class="tab" data-route="studio" aria-label="Dibujar">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        <span data-i18n="nav.draw">Dibujar</span>
+      </button>
+      <button class="tab" data-route="gallery" aria-label="Galería">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z"/></svg>
+        <span data-i18n="nav.gallery">Galería</span>
+      </button>
+      <button class="tab tab-center" data-route="studio-new" aria-label="Nuevo dibujo">
+        <span class="tab-center-fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <button class="tab" data-route="chat" aria-label="Chat">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>
+        <span data-i18n="nav.chat">Chat</span>
+        <i class="badge" id="chat-badge" hidden></i>
+      </button>
+      <button class="tab" data-route="us" aria-label="Nosotros">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"/></svg>
+        <span data-i18n="nav.us">Nosotros</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Toast host -->
+  <div id="toast-host" class="toast-host" aria-live="polite"></div>
+  <!-- Modal host -->
+  <div id="modal-host" class="modal-host" hidden></div>
+  <!-- Sheet host (bottom sheets) -->
+  <div id="sheet-host" class="sheet-host" hidden></div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

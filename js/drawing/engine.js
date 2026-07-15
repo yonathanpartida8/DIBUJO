@@ -1,0 +1,388 @@
+// Drawing engine — canvas stage, layers, tools, input, paper, transform, save.
+import { el, clamp, uid, throttle } from '../core/utils.js';
+import { LayerStack } from './layers.js';
+import { History } from './history.js';
+import { StrokePainter } from './paint.js';
+import { floodFill, pickColor } from './floodfill.js';
+import { BRUSHES } from './brushes.js';
+import { bus } from '../core/bus.js';
+import { store } from '../core/store.js';
+
+export const PAPER_TEXTURES = {
+  none: 'Liso', recycled: 'Reciclado', watercolor: 'Acuarela', notebook: 'Libreta',
+  parchment: 'Pergamino', canvas: 'Lienzo', wood: 'Madera', cardboard: 'Cartulina', dots: 'Puntos',
+};
+
+export class Engine {
+  constructor() {
+    this.docW = 1080; this.docH = 1440;
+    this.stack = null;
+    this.history = new History(140);
+    this.recorder = null; // set by studio
+    this.tool = 'pen';
+    this.color = '#5a4e58';
+    this.brushSize = 6;
+    this.opacity = 1;
+    this.flow = 1;
+    this.hardness = 0.85;
+    this.smoothing = 0.3;      // 0..1 position smoothing
+    this.stabilizer = 0.45;    // 0..1 lag-based stabiliser
+    this.pressureEnabled = true;
+    this.symmetry = { mode: 'none', count: 6 };
+    this.paper = { color: '#ffffff', texture: 'none', transparent: false, grid: false, guides: false, infinite: false };
+    this.media = [];           // {id,type,src,x,y,w,h,rot,opacity,...}
+    this.zoom = 1; this.panX = 0; this.panY = 0;
+    this._pointers = new Map();
+    this._painter = null;
+    this._compositePending = false;
+    this._shapeStart = null;
+    this.onHistoryChange = null;
+    this.onChange = null;      // dirty callback
+    this.recentColors = ['#5a4e58', '#ef92a6', '#a98fd4', '#b8e0d2', '#ffd7bd', '#bcd8f2'];
+    this._quality = store.get().settings.quality;
+  }
+
+  // ---------- Mount ----------
+  mount(stageEl) {
+    this.stage = stageEl;
+    this.frame = el('div', { class: 'st-canvas-frame' });
+    this.paperCanvas = el('canvas', { class: 'paper', width: this.docW, height: this.docH });
+    this.display = el('canvas', { width: this.docW, height: this.docH });
+    this.overlay = el('canvas', { class: 'overlay-cv', width: this.docW, height: this.docH });
+    this.mediaLayer = el('div', { class: 'media-layer' });
+    this.frame.append(this.paperCanvas, this.display, this.overlay, this.mediaLayer);
+    stageEl.append(this.frame);
+    this.pctx = this.paperCanvas.getContext('2d');
+    this.dctx = this.display.getContext('2d');
+    this.octx = this.overlay.getContext('2d');
+    this._fit();
+    this._bindInput();
+    window.addEventListener('resize', () => this._fit());
+    this.renderPaper();
+  }
+  _fit() {
+    const pad = 16;
+    const availW = this.stage.clientWidth - pad * 2;
+    const availH = this.stage.clientHeight - pad * 2;
+    this.baseScale = Math.min(availW / this.docW, availH / this.docH);
+    this._applyTransform();
+  }
+  _applyTransform() {
+    const s = this.baseScale * this.zoom;
+    const w = this.docW * s, h = this.docH * s;
+    this.frame.style.width = this.docW + 'px';
+    this.frame.style.height = this.docH + 'px';
+    this.frame.style.transformOrigin = 'top left';
+    const cx = (this.stage.clientWidth - w) / 2 + this.panX;
+    const cy = (this.stage.clientHeight - h) / 2 + this.panY;
+    this.frame.style.transform = `translate(${cx}px, ${cy}px) scale(${s})`;
+    bus.emit('engine:zoom', this.zoom);
+  }
+
+  // ---------- New / Load ----------
+  newDoc({ w = 1080, h = 1440 } = {}) {
+    this.docW = w; this.docH = h;
+    this.stack = new LayerStack(w, h);
+    this.stack.add('Fondo');
+    this.history.clear();
+    this.media = [];
+    if (this.paperCanvas) { this.paperCanvas.width = this.display.width = this.overlay.width = w; this.paperCanvas.height = this.display.height = this.overlay.height = h; }
+    this._fit(); this.renderPaper(); this.requestComposite();
+    this.renderMedia();
+  }
+  async loadDoc(doc) {
+    this.docW = doc.w; this.docH = doc.h;
+    this.stack = await LayerStack.deserialize(doc.stack);
+    this.paper = { ...this.paper, ...(doc.paper || {}) };
+    this.media = doc.media || [];
+    this.history.clear();
+    if (this.paperCanvas) { this.paperCanvas.width = this.display.width = this.overlay.width = doc.w; this.paperCanvas.height = this.display.height = this.overlay.height = doc.h; }
+    this._fit(); this.renderPaper(); this.requestComposite(); this.renderMedia();
+  }
+
+  // ---------- Paper ----------
+  renderPaper() {
+    const c = this.pctx, w = this.docW, h = this.docH;
+    c.clearRect(0, 0, w, h);
+    if (this.paper.transparent) { /* leave checker showing */ }
+    else { c.fillStyle = this.paper.color; c.fillRect(0, 0, w, h); }
+    this._drawTexture(c, w, h);
+    if (this.paper.grid) this._drawGrid(c, w, h);
+  }
+  _drawTexture(c, w, h) {
+    const tex = this.paper.texture;
+    if (tex === 'none' || this.paper.transparent) return;
+    c.save();
+    if (tex === 'notebook') {
+      c.strokeStyle = 'rgba(120,150,210,0.22)'; c.lineWidth = 1.5;
+      for (let y = 80; y < h; y += 56) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+      c.strokeStyle = 'rgba(230,120,140,0.3)'; c.beginPath(); c.moveTo(70, 0); c.lineTo(70, h); c.stroke();
+    } else if (tex === 'dots') {
+      c.fillStyle = 'rgba(120,110,140,0.18)';
+      for (let y = 40; y < h; y += 48) for (let x = 40; x < w; x += 48) { c.beginPath(); c.arc(x, y, 2, 0, 7); c.fill(); }
+    } else if (tex === 'wood') {
+      for (let i = 0; i < h; i += 6) { c.fillStyle = `rgba(150,110,70,${0.03 + Math.random() * 0.04})`; c.fillRect(0, i, w, 3); }
+    } else {
+      // procedural grain for recycled/watercolor/parchment/canvas/cardboard
+      const density = tex === 'canvas' ? 0.06 : 0.04;
+      const tint = { recycled: '150,140,110', watercolor: '120,140,170', parchment: '190,160,110', canvas: '120,110,100', cardboard: '170,130,90' }[tex] || '150,140,120';
+      const n = Math.floor(w * h * density / 60);
+      for (let i = 0; i < n; i++) {
+        c.fillStyle = `rgba(${tint},${Math.random() * 0.06})`;
+        c.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5);
+      }
+      if (tex === 'canvas') {
+        c.strokeStyle = 'rgba(120,110,100,0.05)';
+        for (let x = 0; x < w; x += 4) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); }
+        for (let y = 0; y < h; y += 4) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+      }
+    }
+    c.restore();
+  }
+  _drawGrid(c, w, h) {
+    c.save(); c.strokeStyle = 'rgba(120,110,140,0.16)'; c.lineWidth = 1;
+    const step = 48;
+    for (let x = step; x < w; x += step) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); }
+    for (let y = step; y < h; y += step) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+    c.restore();
+  }
+  setPaper(patch) { this.paper = { ...this.paper, ...patch }; this.renderPaper(); this.markDirty(); }
+
+  // ---------- Composite ----------
+  requestComposite() {
+    if (this._compositePending) return;
+    this._compositePending = true;
+    requestAnimationFrame(() => { this._compositePending = false; this.stack.compositeTo(this.dctx); });
+  }
+  markDirty() { this.onChange?.(); }
+
+  // ---------- Input ----------
+  clientToDoc(clientX, clientY) {
+    const rect = this.display.getBoundingClientRect();
+    return {
+      x: clamp((clientX - rect.left) / rect.width * this.docW, 0, this.docW),
+      y: clamp((clientY - rect.top) / rect.height * this.docH, 0, this.docH),
+    };
+  }
+  _bindInput() {
+    const s = this.stage;
+    s.style.touchAction = 'none';
+    s.addEventListener('pointerdown', (e) => this._onDown(e));
+    s.addEventListener('pointermove', (e) => this._onMove(e));
+    s.addEventListener('pointerup', (e) => this._onUp(e));
+    s.addEventListener('pointercancel', (e) => this._onUp(e));
+    s.addEventListener('pointerleave', (e) => this._onUp(e));
+  }
+  _pressure(e) {
+    if (!this.pressureEnabled) return 1;
+    if (e.pointerType === 'pen' && e.pressure > 0) return e.pressure;
+    if (e.pointerType === 'touch' && e.pressure > 0 && e.pressure !== 0.5) return e.pressure;
+    return 1;
+  }
+  _onDown(e) {
+    if (this._playbackLock) return;
+    this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this._pointers.size >= 2) { this._endStrokeAbort(); this._gesture = this._startGesture(); return; }
+    if (this.tool === 'pan') return;
+    const layer = this.stack.active;
+    if (layer.locked || !layer.visible) return;
+    e.preventDefault();
+    const pt = this.clientToDoc(e.clientX, e.clientY);
+    pt.p = this._pressure(e);
+    // Non-brush tools
+    if (this.tool === 'bucket') return this._doFill(pt);
+    if (this.tool === 'eyedropper') return this._doPick(pt);
+    if (['line', 'rect', 'ellipse', 'triangle', 'star', 'polygon'].includes(this.tool)) { this._shapeStart = pt; return; }
+    // Brush stroke
+    this._beforeSnapshot = layer.snapshot();
+    this._smoothPt = { x: pt.x, y: pt.y, p: pt.p };
+    const seed = (Math.random() * 2 ** 31) | 0;
+    this._op = {
+      op: 'stroke', tool: this.tool, color: this.color, size: this.brushSize, opacity: this.opacity,
+      flow: this.flow, hardness: this.hardness, blend: this.stack.active.blend, seed,
+      pressure: this.pressureEnabled, layerId: layer.id,
+      sym: this.symmetry.mode === 'none' ? null : { mode: this.symmetry.mode, count: this.symmetry.count, ax: this.docW / 2, ay: this.docH / 2 },
+    };
+    this._painter = new StrokePainter(this._op, this.docW, this.docH);
+    this._painter.addPoint(this._smoothPt, layer.ctx);
+    this._painter.compositeTo(layer.ctx);
+    this.requestComposite();
+    this.recorder?.beginStroke(this._op);
+    this.recorder?.addPoint(this._smoothPt.x, this._smoothPt.y, this._smoothPt.p);
+    this._drawing = true;
+  }
+  _onMove(e) {
+    if (this._pointers.has(e.pointerId)) this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this._gesture && this._pointers.size >= 2) return this._updateGesture();
+    if (this._shapeStart) return this._previewShape(this.clientToDoc(e.clientX, e.clientY));
+    if (!this._drawing || !this._painter) return;
+    e.preventDefault();
+    const layer = this.stack.active;
+    // Consume coalesced events for high-refresh smoothness (90/120/144/165 Hz).
+    const events = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+    const k = 1 - (this.stabilizer * 0.7 + this.smoothing * 0.25); // smoothing/stabiliser factor
+    for (const ev of events) {
+      const raw = this.clientToDoc(ev.clientX, ev.clientY);
+      const p = this._pressure(ev);
+      this._smoothPt = {
+        x: this._smoothPt.x + (raw.x - this._smoothPt.x) * k,
+        y: this._smoothPt.y + (raw.y - this._smoothPt.y) * k,
+        p,
+      };
+      // Incremental: paint the new segment into the stroke buffer (O(1) per point).
+      this._painter.addPoint(this._smoothPt, layer.ctx);
+      this.recorder?.addPoint(this._smoothPt.x, this._smoothPt.y, this._smoothPt.p);
+    }
+    // For buffered (non-erase) brushes, show the growing stroke at uniform opacity.
+    if (!this._painter.erase) {
+      layer.restore(this._beforeSnapshot);
+      this._painter.compositeTo(layer.ctx);
+    }
+    this.requestComposite();
+  }
+  _onUp(e) {
+    this._pointers.delete(e.pointerId);
+    if (this._pointers.size < 2) this._gesture = null;
+    if (this._shapeStart) { this._commitShape(this.clientToDoc(e.clientX, e.clientY)); this._shapeStart = null; return; }
+    if (!this._drawing) return;
+    this._drawing = false;
+    const layer = this.stack.active;
+    if (this._painter && !this._painter.erase) { layer.restore(this._beforeSnapshot); this._painter.compositeTo(layer.ctx); }
+    // record history
+    this.history.push({ type: 'layer', layerId: layer.id, before: this._beforeSnapshot, after: layer.snapshot() });
+    this.recorder?.endStroke();
+    if (this._op) bus.emit('engine:strokeDone', this._op);
+    this._painter = null; this._beforeSnapshot = null; this._op = null;
+    this.onHistoryChange?.(); this.requestComposite(); this.markDirty();
+    this._pushRecent(this.color);
+  }
+  _endStrokeAbort() {
+    if (this._drawing && this._painter) {
+      const layer = this.stack.active;
+      if (this._beforeSnapshot) layer.restore(this._beforeSnapshot);
+      this.recorder?.endStroke(); // keep partial? better discard
+      this._drawing = false; this._painter = null; this.requestComposite();
+    }
+  }
+
+  // ---------- Gestures (pinch zoom / pan) ----------
+  _startGesture() {
+    const pts = [...this._pointers.values()];
+    return { d0: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), z0: this.zoom, c0: this._mid(pts), pan0: { x: this.panX, y: this.panY } };
+  }
+  _mid(pts) { return { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }; }
+  _updateGesture() {
+    const pts = [...this._pointers.values()];
+    if (pts.length < 2) return;
+    const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    const c = this._mid(pts);
+    this.zoom = clamp(this._gesture.z0 * (d / this._gesture.d0), 0.2, 8);
+    this.panX = this._gesture.pan0.x + (c.x - this._gesture.c0.x);
+    this.panY = this._gesture.pan0.y + (c.y - this._gesture.c0.y);
+    this._applyTransform();
+  }
+  setZoom(z) { this.zoom = clamp(z, 0.2, 8); this._applyTransform(); }
+  resetView() { this.zoom = 1; this.panX = 0; this.panY = 0; this._applyTransform(); }
+
+  // ---------- Fill / Pick ----------
+  _doFill(pt) {
+    const layer = this.stack.active;
+    const before = layer.snapshot();
+    const comp = document.createElement('canvas'); comp.width = this.docW; comp.height = this.docH;
+    this.stack.compositeTo(comp.getContext('2d'));
+    const sample = comp.getContext('2d').getImageData(0, 0, this.docW, this.docH);
+    floodFill({ targetCtx: layer.ctx, sampleImageData: sample, x: pt.x, y: pt.y, hex: this.color, tolerance: this.fillTolerance ?? 40, alpha: this.opacity, w: this.docW, h: this.docH, expand: 1 });
+    this.history.push({ type: 'layer', layerId: layer.id, before, after: layer.snapshot() });
+    this.recorder?.logAction({ op: 'fill', layerId: layer.id, x: Math.round(pt.x), y: Math.round(pt.y), color: this.color, tolerance: this.fillTolerance ?? 40, opacity: this.opacity });
+    this.onHistoryChange?.(); this.requestComposite(); this.markDirty(); this._pushRecent(this.color);
+  }
+  _doPick(pt) {
+    const comp = document.createElement('canvas'); comp.width = this.docW; comp.height = this.docH;
+    this.stack.compositeTo(comp.getContext('2d'));
+    const data = comp.getContext('2d').getImageData(0, 0, this.docW, this.docH);
+    const hex = pickColor(data, pt.x, pt.y, this.docW);
+    if (hex) { this.setColor(hex); bus.emit('engine:picked', hex); }
+  }
+
+  // ---------- Shapes / Lines ----------
+  _shapePoints(a, b) {
+    const pts = [];
+    const push = (x, y) => pts.push([x, y, 1]);
+    const seg = (x0, y0, x1, y1) => { const n = Math.max(2, Math.hypot(x1 - x0, y1 - y0) / 3); for (let i = 0; i <= n; i++) push(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n); };
+    if (this.tool === 'line') seg(a.x, a.y, b.x, b.y);
+    else if (this.tool === 'rect') { seg(a.x, a.y, b.x, a.y); seg(b.x, a.y, b.x, b.y); seg(b.x, b.y, a.x, b.y); seg(a.x, b.y, a.x, a.y); }
+    else if (this.tool === 'ellipse') { const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, rx = Math.abs(b.x - a.x) / 2, ry = Math.abs(b.y - a.y) / 2, n = Math.max(24, (rx + ry)); for (let i = 0; i <= n; i++) { const t = i / n * 6.283; push(cx + Math.cos(t) * rx, cy + Math.sin(t) * ry); } }
+    else if (this.tool === 'triangle') { const cx = (a.x + b.x) / 2; seg(cx, a.y, b.x, b.y); seg(b.x, b.y, a.x, b.y); seg(a.x, b.y, cx, a.y); }
+    else if (this.tool === 'star' || this.tool === 'polygon') {
+      const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, R = Math.hypot(b.x - a.x, b.y - a.y) / 2;
+      const spikes = this.tool === 'star' ? 5 : 6; const step = Math.PI / spikes;
+      const first = []; let prev = null;
+      for (let i = 0; i <= spikes * 2; i++) { const r = this.tool === 'star' ? (i % 2 ? R * 0.45 : R) : R; const ang = -Math.PI / 2 + i * (this.tool === 'star' ? step : (2 * Math.PI / spikes)); const x = cx + Math.cos(ang) * r, y = cy + Math.sin(ang) * r; if (prev) seg(prev.x, prev.y, x, y); prev = { x, y }; if (this.tool === 'polygon' && i >= spikes) break; }
+    }
+    return pts;
+  }
+  _previewShape(b) {
+    const pts = this._shapePoints(this._shapeStart, b);
+    this.octx.clearRect(0, 0, this.docW, this.docH);
+    this.octx.save(); this.octx.strokeStyle = this.color; this.octx.lineWidth = this.brushSize; this.octx.lineJoin = 'round'; this.octx.lineCap = 'round'; this.octx.globalAlpha = this.opacity;
+    this.octx.beginPath(); pts.forEach(([x, y], i) => i ? this.octx.lineTo(x, y) : this.octx.moveTo(x, y)); this.octx.stroke(); this.octx.restore();
+  }
+  _commitShape(b) {
+    this.octx.clearRect(0, 0, this.docW, this.docH);
+    const pts = this._shapePoints(this._shapeStart, b);
+    if (pts.length < 2) return;
+    const layer = this.stack.active; const before = layer.snapshot();
+    const op = { op: 'stroke', tool: this.tool === 'pixel' ? 'pixel' : (BRUSHES[this.tool] ? this.tool : 'pen'), color: this.color, size: this.brushSize, opacity: this.opacity, flow: this.flow, hardness: this.hardness, blend: layer.blend, seed: (Math.random() * 2 ** 31) | 0, pressure: false, layerId: layer.id, sym: this.symmetry.mode === 'none' ? null : { mode: this.symmetry.mode, count: this.symmetry.count, ax: this.docW / 2, ay: this.docH / 2 }, pts };
+    const painter = new StrokePainter(op, this.docW, this.docH);
+    for (const [x, y, p] of pts) painter.addPoint({ x, y, p }, layer.ctx);
+    painter.compositeTo(layer.ctx);
+    this.history.push({ type: 'layer', layerId: layer.id, before, after: layer.snapshot() });
+    if (this.recorder) { this.recorder.beginStroke(op); for (const [x, y, p] of pts) this.recorder.addPoint(x, y, p); this.recorder._cur.pts = pts.map(([x, y, p]) => [x, y, p, 4]); this.recorder.endStroke(); }
+    this.onHistoryChange?.(); this.requestComposite(); this.markDirty();
+  }
+
+  // ---------- Tool/color setters ----------
+  setTool(t) { this.tool = t; const b = BRUSHES[t]; if (b) { this.brushSize = b.size; this.opacity = b.opacity; } bus.emit('engine:tool', t); }
+  setColor(c) { this.color = c; bus.emit('engine:color', c); }
+  _pushRecent(c) { this.recentColors = [c, ...this.recentColors.filter((x) => x !== c)].slice(0, 12); bus.emit('engine:recent', this.recentColors); }
+
+  // ---------- History ----------
+  undo() { this.history.undo(this); this.markDirty(); }
+  redo() { this.history.redo(this); this.markDirty(); }
+
+  // ---------- Media ----------
+  addMedia(m) { m.id = m.id || uid('media'); this.media.push(m); this.renderMedia(); this.markDirty(); bus.emit('engine:media', this.media); return m; }
+  removeMedia(id) { this.media = this.media.filter((m) => m.id !== id); this.renderMedia(); this.markDirty(); }
+  renderMedia() { bus.emit('engine:mediaRender', this.media); }
+
+  // ---------- Export / Save ----------
+  flatten({ includeMedia = true, transparentPaper = null } = {}) {
+    const c = document.createElement('canvas'); c.width = this.docW; c.height = this.docH;
+    const ctx = c.getContext('2d');
+    const transp = transparentPaper == null ? this.paper.transparent : transparentPaper;
+    if (!transp) ctx.drawImage(this.paperCanvas, 0, 0);
+    this.stack.compositeTo(ctx);
+    if (includeMedia) {
+      for (const m of this.media) {
+        ctx.save(); ctx.globalAlpha = m.opacity ?? 1;
+        ctx.translate(m.x + m.w / 2, m.y + m.h / 2); ctx.rotate((m.rot || 0) * Math.PI / 180);
+        if (m.type === 'text' || m.type === 'emoji') { ctx.fillStyle = m.color || '#000'; ctx.font = `${m.fontSize || 40}px ${m.font || 'Nunito, sans-serif'}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(m.text, 0, 0); }
+        else if (m._img) { ctx.drawImage(m._img, -m.w / 2, -m.h / 2, m.w, m.h); }
+        ctx.restore();
+      }
+    }
+    return c;
+  }
+  thumbnail(size = 400) {
+    const src = this.flatten();
+    const c = document.createElement('canvas');
+    const ratio = this.docH / this.docW; c.width = size; c.height = Math.round(size * ratio);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(src, 0, 0, c.width, c.height);
+    return c.toDataURL('image/png');
+  }
+  serialize() {
+    return { w: this.docW, h: this.docH, paper: this.paper, stack: this.stack.serialize(), media: this.media.map((m) => { const { _img, ...rest } = m; return rest; }) };
+  }
+}

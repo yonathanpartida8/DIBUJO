@@ -1,0 +1,128 @@
+/* ============================================================
+   Drawing studio — canvas stage, toolbars, panels, playback
+   ============================================================ */
+
+.studio { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--surface-inset); overflow: hidden; }
+
+/* Top bar */
+.st-top {
+  display: flex; align-items: center; gap: var(--s-2);
+  padding: calc(var(--safe-t) + 8px) 10px 8px;
+  background: var(--glass); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line); z-index: 20;
+}
+.st-top .title { flex: 1; min-width: 0; text-align: center; }
+.st-top .title .n { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-top .title .save-state { font-size: 0.68rem; color: var(--text-3); }
+.st-top .rec-dot { display: inline-flex; align-items: center; gap: 5px; font-size: 0.68rem; color: var(--rose-deep); font-weight: 700; }
+.st-top .rec-dot i { width: 8px; height: 8px; border-radius: 50%; background: var(--rose-deep); animation: recPulse 1.4s infinite; }
+@keyframes recPulse { 50% { opacity: 0.35; } }
+
+/* Canvas stage */
+.st-stage { position: relative; flex: 1; overflow: hidden; touch-action: none; display: grid; place-items: center; }
+.st-canvas-frame {
+  position: relative; box-shadow: var(--shadow-lg); border-radius: 4px; overflow: hidden;
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #eee 25%, transparent 25%),
+    linear-gradient(-45deg, #eee 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eee 75%),
+    linear-gradient(-45deg, transparent 75%, #eee 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  will-change: transform;
+}
+.st-canvas-frame canvas { position: absolute; top: 0; left: 0; display: block; touch-action: none; }
+.st-canvas-frame .paper { z-index: 0; }
+.st-canvas-frame .overlay-cv { z-index: 60; pointer-events: none; }
+
+/* Floating side rail (tools) */
+.st-rail {
+  position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 6px; z-index: 15;
+  background: var(--glass); backdrop-filter: blur(16px);
+  border: 1px solid var(--line); border-radius: var(--r-xl);
+  padding: 8px 6px; box-shadow: var(--shadow-md); max-height: 76vh; overflow-y: auto; scrollbar-width: none;
+}
+.st-rail::-webkit-scrollbar { display: none; }
+.st-tool { display: grid; place-items: center; width: 42px; height: 42px; border-radius: var(--r-md); color: var(--text-2); transition: all var(--dur-2) var(--ease); }
+.st-tool svg { width: 22px; height: 22px; fill: currentColor; }
+.st-tool.active { background: linear-gradient(135deg, var(--rose), var(--lav)); color: #fff; box-shadow: 0 4px 12px rgba(239, 146, 166, 0.4); }
+.st-tool:active { transform: scale(0.9); }
+
+/* Bottom dock */
+.st-dock {
+  padding: 8px 10px calc(8px + var(--safe-b));
+  background: var(--glass); backdrop-filter: blur(16px);
+  border-top: 1px solid var(--line); z-index: 20;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.st-quick { display: flex; align-items: center; gap: 8px; }
+.st-color-swatch { width: 42px; height: 42px; border-radius: var(--r-md); border: 3px solid var(--surface); box-shadow: var(--shadow-sm); flex: none; }
+.st-size-preview { width: 42px; height: 42px; border-radius: var(--r-md); background: var(--surface-inset); display: grid; place-items: center; flex: none; }
+.st-size-preview i { display: block; border-radius: 50%; background: var(--text); }
+.st-slider-wrap { flex: 1; display: flex; align-items: center; gap: 8px; }
+.st-slider-wrap .lab { font-size: 0.7rem; color: var(--text-2); width: 22px; text-align: center; }
+
+/* Palette (recent colors) */
+.st-palette { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.st-palette::-webkit-scrollbar { display: none; }
+.st-swatch { width: 30px; height: 30px; border-radius: 50%; flex: none; border: 2px solid var(--surface); box-shadow: var(--shadow-sm); }
+.st-swatch.active { transform: scale(1.15); border-color: var(--primary); }
+
+/* Layers panel (bottom sheet reuse) */
+.layer-row { display: flex; align-items: center; gap: var(--s-3); padding: 10px; border-radius: var(--r-md); background: var(--surface-inset); margin-bottom: 8px; }
+.layer-row.active { outline: 2px solid var(--primary); }
+.layer-row .lp-thumb { width: 46px; height: 46px; border-radius: var(--r-sm); background: #fff; border: 1px solid var(--line); overflow: hidden; flex: none;
+  background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%); background-size: 12px 12px; background-position: 0 0,0 6px,6px -6px,-6px 0; }
+.layer-row .lp-thumb canvas { width: 100%; height: 100%; }
+.layer-row .lp-main { flex: 1; min-width: 0; }
+.layer-row .lp-name { font-weight: 600; font-size: 0.9rem; }
+.layer-row .lp-blend { font-size: 0.72rem; color: var(--text-2); }
+.layer-row .lp-acts { display: flex; gap: 4px; }
+.layer-row .lp-acts button { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--surface); }
+.layer-row .lp-acts svg { width: 18px; height: 18px; fill: var(--text-2); }
+.layer-row .lp-acts button.on svg { fill: var(--primary); }
+
+/* Color wheel */
+.wheel-wrap { display: flex; flex-direction: column; align-items: center; gap: var(--s-3); }
+.wheel-canvas { border-radius: 50%; box-shadow: var(--shadow-md); touch-action: none; }
+.hex-input { text-align: center; font-family: monospace; letter-spacing: 1px; text-transform: uppercase; }
+.color-preview-big { width: 100%; height: 44px; border-radius: var(--r-md); border: 1px solid var(--line); }
+
+/* Tool options sheet */
+.opt-group { margin-bottom: var(--s-4); }
+.opt-group .lab { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; color: var(--text-2); margin-bottom: 8px; }
+.opt-group .lab .val { color: var(--primary); }
+
+/* Playback bar */
+.pb-bar { display: flex; flex-direction: column; gap: 8px; }
+.pb-controls { display: flex; align-items: center; justify-content: center; gap: var(--s-3); }
+.pb-controls .icon-btn.big { width: 56px; height: 56px; }
+.pb-controls .icon-btn.big svg { width: 28px; height: 28px; }
+.pb-track { position: relative; height: 30px; display: flex; align-items: center; }
+.pb-speed { display: flex; gap: 6px; justify-content: center; }
+
+/* Media object handles on canvas */
+.media-layer { position: absolute; inset: 0; z-index: 55; pointer-events: none; }
+.media-obj { position: absolute; pointer-events: auto; touch-action: none; border: 2px dashed transparent; border-radius: 6px; }
+.media-obj.selected { border-color: var(--primary); }
+.media-obj img, .media-obj .txt { width: 100%; height: 100%; object-fit: contain; }
+.media-obj .txt { display: grid; place-items: center; white-space: pre; }
+.media-obj .handle { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); border: 2px solid #fff; box-shadow: var(--shadow-sm); }
+.media-obj .handle.br { right: -11px; bottom: -11px; cursor: nwse-resize; }
+.media-obj .handle.rot { right: -11px; top: -30px; background: var(--accent); }
+.media-obj .handle.del { left: -11px; top: -11px; background: #e88; display: grid; place-items: center; }
+.media-obj .handle.del svg { width: 12px; height: 12px; fill: #fff; }
+
+/* Zoom pill */
+.zoom-pill { position: absolute; right: 8px; bottom: 8px; z-index: 15; }
+
+/* Emoji/sticker grid */
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; max-height: 220px; overflow-y: auto; }
+.emoji-grid button { font-size: 1.5rem; padding: 6px; border-radius: var(--r-sm); }
+.emoji-grid button:active { background: var(--surface-3); }
+
+/* GIF results */
+.gif-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 300px; overflow-y: auto; }
+.gif-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--r-sm); }
