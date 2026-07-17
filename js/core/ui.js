@@ -35,7 +35,8 @@ export function sheet(title, content, { onClose, height } = {}) {
   box.append(...(Array.isArray(content) ? content : [content]));
   host.append(box);
   host.hidden = false;
-  const close = () => { box.style.animation = 'sheetIn var(--dur-3) var(--ease) reverse'; setTimeout(() => { host.hidden = true; host.innerHTML = ''; onClose?.(); }, 260); };
+  import('./sounds.js').then((m) => m.playFx('panelOpen'));
+  const close = () => { box.style.animation = 'sheetIn var(--dur-3) var(--ease) reverse'; import('./sounds.js').then((m) => m.playFx('panelClose')); setTimeout(() => { host.hidden = true; host.innerHTML = ''; onClose?.(); }, 260); };
   host.onclick = (e) => { if (e.target === host) close(); };
   return { close, box };
 }
@@ -71,20 +72,6 @@ export function promptDialog({ title, value = '', placeholder = '', confirmText 
   });
 }
 
-// ---------- Sounds (WebAudio, tiny warm blips) ----------
-let actx;
-export function sound(type = 'tap') {
-  if (store.get().settings.sounds !== 'on') return;
-  try {
-    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    const now = actx.currentTime;
-    const o = actx.createOscillator(), g = actx.createGain();
-    const map = { tap: 660, ok: 880, send: 990, pop: 520, love: 740 };
-    o.type = 'sine'; o.frequency.value = map[type] || 660;
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.06, now + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-    o.connect(g).connect(actx.destination);
-    o.start(now); o.stop(now + 0.2);
-  } catch {}
-}
+// ---------- Sonidos (delegado al motor central de sounds.js) ----------
+import { playFx } from './sounds.js';
+export function sound(type = 'tap') { playFx(type); }

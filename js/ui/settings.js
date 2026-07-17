@@ -23,6 +23,10 @@ export async function renderSettings(ctx) {
   // Profile card
   view.append(profileCard(s.profile, 'me'), profileCard(s.partner, 'partner'));
 
+  // Cuenta y espacio de pareja
+  view.append(section('Cuenta y pareja'));
+  view.append(rows(accountRows(s)));
+
   // Appearance
   view.append(section(t('set.appearance')));
   view.append(rows([
@@ -42,9 +46,15 @@ export async function renderSettings(ctx) {
   ]));
 
   // Feedback
-  view.append(section('Sonido & vibración'));
+  view.append(section('Sonido y vibración'));
   view.append(rows([
     toggleRow('🔊', t('set.sounds'), s.settings.sounds === 'on', (v) => store.set('settings', { sounds: v ? 'on' : 'off' })),
+    toggleRow('✏️', 'Sonido al dibujar', s.settings.sndDraw === 'on', (v) => store.set('settings', { sndDraw: v ? 'on' : 'off' })),
+    toggleRow('🩹', 'Sonido al borrar', s.settings.sndErase === 'on', (v) => store.set('settings', { sndErase: v ? 'on' : 'off' })),
+    toggleRow('💬', 'Sonidos de mensajes', s.settings.sndMsg === 'on', (v) => store.set('settings', { sndMsg: v ? 'on' : 'off' })),
+    toggleRow('🗂️', 'Sonidos de paneles', s.settings.sndPanel === 'on', (v) => store.set('settings', { sndPanel: v ? 'on' : 'off' })),
+    toggleRow('🏆', 'Sonido de logros', s.settings.sndAchieve === 'on', (v) => store.set('settings', { sndAchieve: v ? 'on' : 'off' })),
+    toggleRow('💾', 'Sonido al guardar', s.settings.sndSave === 'on', (v) => store.set('settings', { sndSave: v ? 'on' : 'off' })),
     toggleRow('📳', t('set.haptics'), s.settings.haptics === 'on', (v) => store.set('settings', { haptics: v ? 'on' : 'off' })),
     toggleRow('🔔', t('set.notifications'), s.settings.notifications === 'on', async (v) => { store.set('settings', { notifications: v ? 'on' : 'off' }); if (v && 'Notification' in window) await Notification.requestPermission(); }),
   ]));
@@ -76,6 +86,29 @@ export async function renderSettings(ctx) {
 }
 
 function section(title) { return el('div', { class: 'section-title', text: title }); }
+
+// Filas de cuenta: Google, código de pareja y cierre de sesión.
+function accountRows(s) {
+  const out = [];
+  const acc = s.account;
+  if (acc.mode === 'google') {
+    out.push(infoRow('☁️', 'Sesión con Google', acc.coupleId ? 'Vinculados — espacio privado activo 💞' : 'Sin pareja vinculada aún'));
+    if (!acc.coupleId) out.push(tapRow('💌', 'Invitar a mi pareja', 'Genera el código de vínculo', () => go('pairing')));
+    out.push(tapRow('🚪', 'Cerrar sesión', null, async () => {
+      const { fb } = await import('../core/firebase.js');
+      await fb.signOut().catch(() => {});
+      location.reload();
+    }));
+  } else {
+    out.push(infoRow('📱', 'Modo local', 'Tus datos viven solo en este dispositivo'));
+    out.push(tapRow('☁️', 'Iniciar sesión con Google', 'Activa la sincronización en tiempo real', async () => {
+      const { fb } = await import('../core/firebase.js');
+      try { const user = await fb.signInWithGoogle(); if (user) { toast('Sesión iniciada ✓'); go('pairing'); } }
+      catch { toast('No se pudo iniciar sesión'); }
+    }));
+  }
+  return out;
+}
 function rows(children) { return el('div', { class: 'rows' }, children); }
 function toggleRow(emoji, title, checked, onChange) {
   const input = el('input', { type: 'checkbox' }); input.checked = checked; input.onchange = () => onChange(input.checked);

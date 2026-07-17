@@ -29,6 +29,9 @@ export class Engine {
     this.stabilizer = 0.45;    // 0..1 lag-based stabiliser
     this.pressureEnabled = true;
     this.symmetry = { mode: 'none', count: 6 };
+    this.ruler = null;          // { px, py, angle } — barrera física (RulerTool)
+    this.pencilMode = false;    // "Simular Pincel Virtual": trazo desde la punta del lápiz
+    this.pencilOffset = { x: 10, y: -78 }; // desplazamiento en px de pantalla
     this.paper = { color: '#ffffff', texture: 'none', transparent: false, grid: false, guides: false, infinite: false };
     this.media = [];           // {id,type,src,x,y,w,h,rot,opacity,...}
     this.zoom = 1; this.panX = 0; this.panY = 0;
@@ -158,6 +161,8 @@ export class Engine {
 
   // ---------- Input ----------
   clientToDoc(clientX, clientY) {
+    // Modo lápiz virtual: el trazo sale desde la punta del lápiz, no del dedo.
+    if (this.pencilMode) { clientX += this.pencilOffset.x; clientY += this.pencilOffset.y; }
     const rect = this.display.getBoundingClientRect();
     return {
       x: clamp((clientX - rect.left) / rect.width * this.docW, 0, this.docW),
@@ -202,6 +207,8 @@ export class Engine {
       flow: this.flow, hardness: this.hardness, blend: this.stack.active.blend, seed,
       pressure: this.pressureEnabled, layerId: layer.id,
       sym: this.symmetry.mode === 'none' ? null : { mode: this.symmetry.mode, count: this.symmetry.count, ax: this.docW / 2, ay: this.docH / 2 },
+      // Regla activa: el trazo queda confinado al lado donde comenzó.
+      ruler: this.ruler ? { ...this.ruler, side: this._rulerSide(pt) } : null,
     };
     this._painter = new StrokePainter(this._op, this.docW, this.docH);
     this._painter.addPoint(this._smoothPt, layer.ctx);
@@ -210,6 +217,8 @@ export class Engine {
     this.recorder?.beginStroke(this._op);
     this.recorder?.addPoint(this._smoothPt.x, this._smoothPt.y, this._smoothPt.p);
     this._drawing = true;
+    bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: true });
+    import('../core/sounds.js').then((m) => BRUSHES[this.tool]?.erase ? m.playFx('erase') : m.startScratch());
   }
   _onMove(e) {
     if (this._pointers.has(e.pointerId)) this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -238,6 +247,7 @@ export class Engine {
       layer.restore(this._beforeSnapshot);
       this._painter.compositeTo(layer.ctx);
     }
+    bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: true });
     this.requestComposite();
   }
   _onUp(e) {
@@ -255,6 +265,15 @@ export class Engine {
     this._painter = null; this._beforeSnapshot = null; this._op = null;
     this.onHistoryChange?.(); this.requestComposite(); this.markDirty();
     this._pushRecent(this.color);
+    bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: false });
+    import('../core/sounds.js').then((m) => m.stopScratch());
+  }
+  // ¿De qué lado de la regla comenzó el trazo? (+1 | -1)
+  _rulerSide(pt) {
+    const r = this.ruler;
+    const nx = -Math.sin(r.angle), ny = Math.cos(r.angle);
+    const d = (pt.x - r.px) * nx + (pt.y - r.py) * ny;
+    return d >= 0 ? 1 : -1;
   }
   _endStrokeAbort() {
     if (this._drawing && this._painter) {

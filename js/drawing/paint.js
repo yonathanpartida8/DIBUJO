@@ -7,6 +7,22 @@ import { dist, lerp } from '../core/utils.js';
 
 function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 
+// Regla profesional: recorta el contexto a un semiplano. Ningún pincel puede
+// pintar del otro lado de la línea — actúa como una barrera física real.
+// ruler: { px, py, angle (rad), side (+1|-1) }
+export function applyRulerClip(ctx, ruler, w, h) {
+  const L = Math.max(w, h) * 3;
+  const dx = Math.cos(ruler.angle), dy = Math.sin(ruler.angle);
+  const nx = -dy * ruler.side, ny = dx * ruler.side; // normal hacia el lado permitido
+  const p = new Path2D();
+  p.moveTo(ruler.px - dx * L, ruler.py - dy * L);
+  p.lineTo(ruler.px + dx * L, ruler.py + dy * L);
+  p.lineTo(ruler.px + dx * L + nx * L, ruler.py + dy * L + ny * L);
+  p.lineTo(ruler.px - dx * L + nx * L, ruler.py - dy * L + ny * L);
+  p.closePath();
+  ctx.clip(p);
+}
+
 export class StrokePainter {
   // op: { tool, color, size, opacity, flow, hardness, blend, seed }
   constructor(op, w, h) {
@@ -17,6 +33,7 @@ export class StrokePainter {
     if (!this.erase) {
       this.buffer = makeCanvas(w, h);
       this.bctx = this.buffer.getContext('2d');
+      if (op.ruler) applyRulerClip(this.bctx, op.ruler, w, h); // barrera física de la regla
     }
     this.reset();
   }
@@ -59,7 +76,10 @@ export class StrokePainter {
   // Add a point; draws dabs from previous point along the segment into buffer/layer.
   addPoint(pt, layerCtx) {
     const target = this.erase ? layerCtx : this.bctx;
-    if (this.erase) { layerCtx.save(); layerCtx.globalCompositeOperation = 'destination-out'; layerCtx.globalAlpha = this.op.opacity ?? 1; }
+    if (this.erase) {
+      layerCtx.save(); layerCtx.globalCompositeOperation = 'destination-out'; layerCtx.globalAlpha = this.op.opacity ?? 1;
+      if (this.op.ruler) applyRulerClip(layerCtx, this.op.ruler, this.w, this.h); // la regla también frena al borrador
+    }
     if (!this.last) {
       this._stampSet(target, pt.x, pt.y, pt.p);
       this.last = pt;

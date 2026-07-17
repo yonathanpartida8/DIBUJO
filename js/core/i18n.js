@@ -4,15 +4,15 @@ import { bus } from './bus.js';
 
 const dict = {
   es: {
-    'nav.draw': 'Dibujar', 'nav.gallery': 'Galería', 'nav.chat': 'Chat', 'nav.us': 'Nosotros',
+    'nav.home': 'Inicio', 'nav.draw': 'Dibujar', 'nav.gallery': 'Galería', 'nav.chat': 'Chat', 'nav.us': 'Nosotros',
     'time.now': 'ahora',
     'common.save': 'Guardar', 'common.cancel': 'Cancelar', 'common.delete': 'Eliminar', 'common.done': 'Listo',
     'common.close': 'Cerrar', 'common.share': 'Compartir', 'common.send': 'Enviar', 'common.duplicate': 'Duplicar',
     'common.edit': 'Editar', 'common.rename': 'Renombrar', 'common.new': 'Nuevo', 'common.search': 'Buscar',
     'common.back': 'Atrás', 'common.settings': 'Ajustes', 'common.confirm': 'Confirmar',
-    'gallery.title': 'Galería', 'gallery.sub': 'Vuestros dibujos, juntos',
+    'gallery.title': 'Galería', 'gallery.sub': 'Sus dibujos, juntos',
     'gallery.all': 'Todos', 'gallery.mine': 'Míos', 'gallery.shared': 'Compartidos', 'gallery.favorites': 'Favoritos',
-    'gallery.received': 'Recibidos', 'gallery.empty': 'Aún no hay dibujos', 'gallery.emptySub': 'Toca + para empezar vuestra primera obra',
+    'gallery.received': 'Recibidos', 'gallery.empty': 'Aún no hay dibujos', 'gallery.emptySub': 'Toca + para empezar su primera obra',
     'gallery.folders': 'Carpetas', 'gallery.newFolder': 'Nueva carpeta', 'gallery.newDrawing': 'Nuevo dibujo',
     'studio.untitled': 'Sin título', 'studio.saved': 'Guardado', 'studio.saving': 'Guardando…', 'studio.rec': 'GRABANDO',
     'studio.layers': 'Capas', 'studio.newLayer': 'Nueva capa', 'studio.layer': 'Capa',
@@ -40,7 +40,7 @@ const dict = {
     'toast.exported': 'Exportado', 'toast.cleared': 'Lienzo limpio',
   },
   en: {
-    'nav.draw': 'Draw', 'nav.gallery': 'Gallery', 'nav.chat': 'Chat', 'nav.us': 'Us',
+    'nav.home': 'Home', 'nav.draw': 'Draw', 'nav.gallery': 'Gallery', 'nav.chat': 'Chat', 'nav.us': 'Us',
     'time.now': 'now',
     'common.save': 'Save', 'common.cancel': 'Cancel', 'common.delete': 'Delete', 'common.done': 'Done',
     'common.close': 'Close', 'common.share': 'Share', 'common.send': 'Send', 'common.duplicate': 'Duplicate',

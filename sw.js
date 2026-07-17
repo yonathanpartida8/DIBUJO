@@ -1,5 +1,5 @@
 // Service worker — offline-first app shell for Dibujo PWA.
-const VERSION = 'dibujo-v1.0.0';
+const VERSION = 'dibujo-v2.0.0';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 
@@ -23,6 +23,8 @@ const SHELL_ASSETS = [
   './js/core/ui.js',
   './js/core/utils.js',
   './js/core/theme-apply.js',
+  './js/core/firebase.js',
+  './js/core/sounds.js',
   './js/drawing/engine.js',
   './js/drawing/brushes.js',
   './js/drawing/paint.js',
@@ -32,8 +34,15 @@ const SHELL_ASSETS = [
   './js/drawing/color.js',
   './js/drawing/recorder.js',
   './js/drawing/player.js',
+  './js/drawing/ruler.js',
   './js/media/klipy.js',
   './js/ui/icons.js',
+  './js/ui/home.js',
+  './js/ui/login.js',
+  './js/ui/widgets.js',
+  './js/ui/vinyl.js',
+  './js/ui/assets.js',
+  './js/ui/achievements-ui.js',
   './js/ui/studio.js',
   './js/ui/gallery.js',
   './js/ui/chat.js',
@@ -42,6 +51,7 @@ const SHELL_ASSETS = [
   './js/ui/player-ui.js',
   './js/ui/onboarding.js',
   './js/couples/features.js',
+  './js/couples/achievements.js',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
   './assets/icons/apple-touch-icon.png',
@@ -71,8 +81,18 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // Never cache external API calls (GIF search, media CDNs) — network only, fail soft.
   if (url.origin !== self.location.origin) {
+    // El SDK de Firebase (URLs versionadas de gstatic) sí se cachea para
+    // arranque offline; el resto de externos (API de GIFs, CDNs) va solo a red.
+    if (url.hostname === 'www.gstatic.com') {
+      event.respondWith(
+        caches.match(req).then((cached) => cached || fetch(req).then((res) => {
+          if (res && res.status === 200) { const copy = res.clone(); caches.open(RUNTIME).then((c) => c.put(req, copy)); }
+          return res;
+        }))
+      );
+      return;
+    }
     event.respondWith(fetch(req).catch(() => new Response('', { status: 504 })));
     return;
   }

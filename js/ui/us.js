@@ -8,7 +8,9 @@ import { t, getLang } from '../core/i18n.js';
 import { icon } from './icons.js';
 import { sheet, modal, toast, promptDialog, confirmDialog } from '../core/ui.js';
 import { go } from '../core/router.js';
-import { ACHIEVEMENTS, DAILY_CHALLENGES, todaysChallenge, generateInvite, checkAchievements, addMemory } from '../couples/features.js';
+import { todaysChallenge, generateInvite, checkAchievements, addMemory } from '../couples/features.js';
+import { ACHIEVEMENTS as ACH_ALL } from '../couples/achievements.js';
+import { openAchievements } from './achievements-ui.js';
 
 let counterInt;
 
@@ -60,19 +62,19 @@ export async function renderUs(ctx) {
   view.append(goalsWrap);
   renderGoals();
 
-  // Achievements
-  view.append(el('div', { class: 'section-title', text: '🏆 ' + t('us.achievements') }));
-  const have = new Set(store.get().couple.achievements || []);
-  const ach = el('div', { class: 'grid-auto' });
-  ACHIEVEMENTS.forEach((a) => {
-    const unlocked = have.has(a.id);
-    ach.append(el('div', { class: 'card', style: { textAlign: 'center', opacity: unlocked ? 1 : 0.45, filter: unlocked ? '' : 'grayscale(1)' } }, [
-      el('div', { style: { fontSize: '2rem' }, text: a.emoji }),
-      el('div', { style: { fontWeight: 700, fontSize: '0.85rem', marginTop: '4px' }, text: a.name }),
-      el('div', { style: { color: 'var(--text-2)', fontSize: '0.72rem' }, text: a.desc }),
-    ]));
-  });
-  view.append(ach);
+  // Logros (sistema con +300, rarezas e insignias)
+  const haveN = (store.get().couple.achievements || []).length;
+  const achTitle = el('div', { class: 'section-title', text: '🏆 ' + t('us.achievements') });
+  achTitle.append(el('button', { class: 'more', text: `${haveN}/${ACH_ALL.length} ›`, onclick: openAchievements }));
+  view.append(achTitle);
+  view.append(el('button', { class: 'card btn-block', style: { display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', width: '100%' }, onclick: openAchievements }, [
+    el('div', { style: { fontSize: '2rem' }, text: '🏆' }),
+    el('div', { style: { flex: 1 } }, [
+      el('div', { style: { fontWeight: 800 }, text: `${haveN} logros desbloqueados` }),
+      el('div', { style: { color: 'var(--text-2)', fontSize: '0.8rem' }, text: `De ${ACH_ALL.length} · con rarezas, insignias y recompensas` }),
+    ]),
+    el('div', { class: 'bar', style: { width: '70px' } }, [el('i', { style: { width: Math.min(100, haveN / ACH_ALL.length * 100) + '%' } })]),
+  ]));
 
   // Memories calendar
   view.append(el('div', { class: 'section-title', text: '📅 ' + t('us.memories') }).appendChild(el('button', { class: 'more', text: '+ Añadir', onclick: newMemory })).parentElement);

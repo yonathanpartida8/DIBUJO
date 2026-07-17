@@ -15,8 +15,10 @@ import { icon } from './icons.js';
 import { go } from '../core/router.js';
 import { searchGifs, trendingGifs } from '../media/klipy.js';
 import { openStatsSheet, openPlayer } from './player-ui.js';
+import { RulerTool } from '../drawing/ruler.js';
+import { fb } from '../core/firebase.js';
 
-let engine, recorder, current, saveTimer, autosaveOff;
+let engine, recorder, current, saveTimer, autosaveOff, ruler;
 
 export async function renderStudio(ctx) {
   engine = new Engine();
@@ -36,6 +38,29 @@ export async function renderStudio(ctx) {
   wrap.append(top, stage, rail, dock);
 
   engine.mount(stage);
+  ruler = new RulerTool(engine);
+  fb.setDrawing?.(true);
+
+  // Modo zen: botón flotante que oculta/muestra las barras con elegancia.
+  const zenBtn = el('button', { class: 'zen-fab', html: icon('fit'), 'aria-label': 'Ocultar herramientas', onclick: () => {
+    const on = wrap.dataset.zen === '1';
+    wrap.dataset.zen = on ? '0' : '1';
+    haptic();
+  } });
+  stage.append(zenBtn);
+
+  // Lápiz virtual (sprite que sigue al dedo con la punta en el trazo).
+  const pencil = el('div', { class: 'virtual-pencil', hidden: true, html: '<svg viewBox="0 0 40 160" width="34" height="136"><defs><linearGradient id="pg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f7b7c4"/><stop offset="1" stop-color="#ef92a6"/></linearGradient></defs><polygon points="20,0 12,26 28,26" fill="#5a4e58"/><polygon points="20,0 16,13 24,13" fill="#2f2833"/><rect x="12" y="26" width="16" height="96" rx="4" fill="url(#pg)"/><rect x="12" y="122" width="16" height="14" rx="4" fill="#cbb6e8"/><rect x="12" y="136" width="16" height="10" rx="5" fill="#a98fd4"/></svg>' });
+  stage.append(pencil);
+  const offPointer = bus.on('engine:pointer', (p) => {
+    if (!engine.pencilMode) return;
+    const r = stage.getBoundingClientRect();
+    pencil.hidden = false;
+    pencil.style.transform = `translate(${p.x - r.left + engine.pencilOffset.x}px, ${p.y - r.top + engine.pencilOffset.y}px) rotate(${p.down ? 24 : 18}deg)`;
+    pencil.classList.toggle('drawing', p.down);
+    clearTimeout(pencil._t);
+    pencil._t = setTimeout(() => { pencil.hidden = true; }, 1600);
+  });
 
   // Load or create
   const id = ctx.params.id;
@@ -57,7 +82,9 @@ export async function renderStudio(ctx) {
     leave: async () => {
       clearTimeout(saveTimer);
       await doSave(true);
-      autosaveOff?.(); offCollab?.(); offBroadcast?.();
+      autosaveOff?.(); offCollab?.(); offBroadcast?.(); offPointer?.();
+      fb.setDrawing?.(false);
+      const { stopScratch } = await import('../core/sounds.js'); stopScratch();
     },
   };
 
@@ -82,7 +109,8 @@ export async function renderStudio(ctx) {
     const primary = [
       ['pen', 'pen'], ['pencil', 'pen'], ['brush', 'pen'], ['marker', 'pen'],
       ['eraser', 'eraser'], ['bucket', 'bucket'], ['eyedropper', 'dropper'],
-      ['line', 'line'], ['shapes', 'shapes'], ['symmetry', 'symmetry'], ['more-tools', 'ruler'],
+      ['line', 'line'], ['shapes', 'shapes'], ['symmetry', 'symmetry'],
+      ['ruler-tool', 'ruler'], ['pencil-sim', 'transform'], ['more-tools', 'more'],
     ];
     for (const [tool, ic] of primary) {
       const b = el('button', { class: 'st-tool', dataset: { tool }, html: icon(ic), title: BRUSHES[tool]?.name || tool });
@@ -109,6 +137,7 @@ export async function renderStudio(ctx) {
     actions.append(
       mk('paper', openPaper, t('studio.paper')),
       mk('image', openMedia, t('studio.media')),
+      mk('sticker', openAssetsPanel, 'Assets'),
       mk('music', openMusic, t('studio.music')),
       mk('play', () => openPlayer({ doc: engine.serialize(), recording: recorder.serialize(), title: current?.title }), t('studio.play')),
       mk('stats', () => openStatsSheet(recorder.stats(), current), t('studio.stats')),
@@ -147,6 +176,10 @@ async function loadInto(rec) {
   startTimer();
   bus.emit('engine:mediaRender', engine.media);
   loadMediaImages();
+  // La música del dibujo suena automáticamente en el tocadiscos.
+  if (rec.music?.autoplay && rec.music.src) {
+    import('./vinyl.js').then((m) => { m.playTrack({ id: rec.id + '_music', name: rec.music.name, src: rec.music.src, kind: 'song' }); m.showMini(); });
+  }
 }
 async function loadMediaImages() {
   for (const m of engine.media) {
@@ -183,12 +216,19 @@ function onToolButton(tool, btn) {
   if (tool === 'shapes') return openShapes();
   if (tool === 'symmetry') return openSymmetry();
   if (tool === 'more-tools') return openMoreTools();
+  if (tool === 'ruler-tool') { const on = ruler.toggle(); btn.classList.toggle('active', on); toast(on ? '📏 Regla activa — barrera física' : 'Regla desactivada'); return; }
+  if (tool === 'pencil-sim') { engine.pencilMode = !engine.pencilMode; btn.classList.toggle('active', engine.pencilMode); toast(engine.pencilMode ? '✏️ Simular Pincel Virtual activado' : 'Pincel virtual desactivado'); return; }
   engine.setTool(tool);
   refreshToolUI();
 }
 
 function refreshToolUI() {
-  $('.st-rail')?.querySelectorAll('.st-tool').forEach((b) => b.classList.toggle('active', b.dataset.tool === engine.tool));
+  $('.st-rail')?.querySelectorAll('.st-tool').forEach((b) => {
+    // Los conmutadores (regla / lápiz virtual) conservan su propio estado.
+    if (b.dataset.tool === 'ruler-tool') { b.classList.toggle('active', !!ruler?.active); return; }
+    if (b.dataset.tool === 'pencil-sim') { b.classList.toggle('active', !!engine.pencilMode); return; }
+    b.classList.toggle('active', b.dataset.tool === engine.tool);
+  });
   const sl = $('#st-size'); if (sl) sl.value = engine.brushSize;
   updateSizeDot();
 }
@@ -224,6 +264,7 @@ async function doSave(showState) {
   current.recording = recorder.serialize();
   current.stats = recorder.stats();
   await db.put('drawings', current);
+  if (showState) import('../core/sounds.js').then((m) => m.playFx('save'));
   // update global stats
   const ds = store.get().drawStats;
   store.set('drawStats', { totalDrawings: Math.max(ds.totalDrawings, await db.count('drawings')), totalStrokes: ds.totalStrokes, totalActiveMs: ds.totalActiveMs });
@@ -480,9 +521,9 @@ function gifTab(panel, s) {
   const input = el('input', { class: 'input', placeholder: t('common.search') + ' GIFs (Klipy)…' });
   const grid = el('div', { class: 'gif-grid', style: { marginTop: '10px' } });
   panel.append(input, grid);
-  const load = async (q) => { grid.innerHTML = '<div class="sk" style="height:90px"></div>'.repeat(6); const res = q ? await searchGifs(q) : await trendingGifs(); grid.innerHTML = ''; if (!res.length) { grid.append(el('p', { style: { color: 'var(--text-2)', gridColumn: '1/-1' }, text: 'No hay resultados o sin conexión.' })); return; } res.forEach((g) => grid.append(el('img', { src: g.preview, loading: 'lazy', onclick: () => { addImageMedia(g.url, 'gif'); s.close(); toast('GIF añadido'); } }))); };
+  const load = async (q) => { grid.innerHTML = '<div class="sk" style="height:90px"></div>'.repeat(6); const res = await searchGifs(q || 'bear love'); grid.innerHTML = ''; if (!res.length) { grid.append(el('p', { style: { color: 'var(--text-2)', gridColumn: '1/-1' }, text: 'No hay resultados o sin conexión.' })); return; } res.forEach((g) => grid.append(el('img', { src: g.preview, loading: 'lazy', onclick: () => { addImageMedia(g.url, 'gif'); s.close(); toast('GIF añadido'); } }))); };
   let tmr; input.oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => load(input.value.trim()), 400); };
-  load('');
+  load('bear love'); // el buscador siempre inicia con "bear love" 🐻💕
 }
 function textTab(panel, s) {
   const ta = el('textarea', { class: 'textarea', placeholder: 'Escribe algo bonito…' });
@@ -553,21 +594,45 @@ function startRotate(e, m) {
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
 }
 
-// ---------- Music ----------
+// ---------- Biblioteca de assets ----------
+async function openAssetsPanel() {
+  const { openAssets } = await import('./assets.js');
+  openAssets({ onPick: async (a) => {
+    if (a.kind === 'img' || a.kind === 'gif' || a.kind === 'bg' && a.src) { addImageMedia(a.src, a.kind === 'gif' ? 'gif' : 'image'); return; }
+    if (a.kind === 'sticker') { engine.addMedia({ type: 'text', text: a.text, fontSize: 120, x: engine.docW / 2 - 60, y: engine.docH / 2 - 60, w: 140, h: 140, rot: 0, opacity: 1 }); return; }
+    if (a.kind === 'brush') { engine.setTool(a.id); refreshToolUI(); return; }
+    if (a.kind === 'texture') { engine.setPaper({ texture: a.id }); return; }
+    if (a.kind === 'bg') { a.color ? engine.setPaper({ color: a.color, transparent: false }) : setCustomBg(a.src); return; }
+    if (a.kind === 'song') { const { openVinyl } = await import('./vinyl.js'); openVinyl(a); return; }
+    if (a.kind === 'frame') {
+      // Marco decorativo: esquinas con el emoji elegido.
+      const s = 110, W = engine.docW, H = engine.docH;
+      [[20, 20], [W - s - 20, 20], [20, H - s - 20], [W - s - 20, H - s - 20]].forEach(([x, y]) => engine.addMedia({ type: 'text', text: a.emoji, fontSize: 96, x, y, w: s, h: s, rot: 0, opacity: 0.9 }));
+      return;
+    }
+    if (a.kind === 'template') {
+      const ok = recorder.isEmpty || confirm('¿Crear un lienzo nuevo con esta plantilla?');
+      if (ok) { engine.newDoc({ w: a.w, h: a.h }); recorder.reset(); toast('📐 ' + a.name); }
+      return;
+    }
+  } });
+}
+
+// ---------- Música (tocadiscos) ----------
 function openMusic() {
   const body = el('div');
   const s = sheet(t('studio.music'), body);
-  if (current?.music) body.append(musicCard(current.music, () => { current.music = null; engine.markDirty(); s.close(); openMusic(); }));
-  body.append(el('button', { class: 'btn btn-primary btn-block', html: icon('music') + ' Añadir canción', onclick: () => pickAudioFile(async (src, name) => { if (!current) await doSave(true); current.music = { src, name, loop: true, volume: 0.8, autoplay: true }; engine.markDirty(); s.close(); openMusic(); toast('🎵 ' + name); }) }));
-  body.append(el('p', { style: { color: 'var(--text-3)', fontSize: '0.78rem', marginTop: '10px', textAlign: 'center' }, text: 'Cada dibujo puede tener su propia música que suena al abrirlo.' }));
-}
-function musicCard(music, onRemove) {
-  const audio = el('audio', { src: music.src, controls: true, loop: music.loop, style: { width: '100%' } });
-  audio.volume = music.volume ?? 0.8;
-  return el('div', { class: 'card', style: { marginBottom: '12px' } }, [
-    el('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' } }, [el('div', { class: 'r-ic', html: icon('music') }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: music.name || 'Canción' })]), el('button', { class: 'icon-btn', html: icon('trash'), onclick: onRemove })]),
-    audio,
-  ]);
+  if (current?.music) {
+    body.append(el('div', { class: 'card', style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' } }, [
+      el('div', { class: 'r-ic', html: icon('music') }),
+      el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: current.music.name || 'Canción' }), el('div', { class: 'r-sub', text: 'La canción de este dibujo' })]),
+      el('button', { class: 'btn btn-soft btn-sm', text: '▶ Tocar', onclick: async () => { const { openVinyl } = await import('./vinyl.js'); s.close(); openVinyl({ id: current.id + '_music', name: current.music.name, src: current.music.src, kind: 'song' }); } }),
+      el('button', { class: 'icon-btn', html: icon('trash'), onclick: () => { current.music = null; engine.markDirty(); s.close(); openMusic(); } }),
+    ]));
+  }
+  body.append(el('button', { class: 'btn btn-primary btn-block', html: icon('music') + ' Elegir canción para este dibujo', onclick: () => pickAudioFile(async (src, name) => { if (!current) await doSave(true); current.music = { src, name, loop: true, volume: 0.8, autoplay: true }; engine.markDirty(); s.close(); const { openVinyl } = await import('./vinyl.js'); openVinyl({ id: current.id + '_music', name, src, kind: 'song' }); }) }));
+  body.append(el('button', { class: 'btn btn-ghost btn-block', style: { marginTop: '8px' }, text: '💿 Abrir tocadiscos', onclick: async () => { const { openVinyl } = await import('./vinyl.js'); s.close(); openVinyl(); } }));
+  body.append(el('p', { style: { color: 'var(--text-3)', fontSize: '0.78rem', marginTop: '10px', textAlign: 'center' }, text: 'Cada dibujo puede tener su propia música. Suena en el tocadiscos al abrirlo. 💿' }));
 }
 function pickAudioFile(cb) {
   const inp = el('input', { type: 'file', accept: 'audio/*', style: { display: 'none' } });
@@ -600,9 +665,11 @@ async function shareDrawing() {
 }
 async function sendToPartner() {
   await doSave(true);
-  const msg = { id: uid('msg'), ts: Date.now(), from: 'me', type: 'drawing', drawingId: current.id, thumb: current.thumb, text: '' };
+  const msg = { id: uid('msg'), ts: Date.now(), from: 'me', type: 'drawing', drawingId: current.id, thumb: current.thumb, text: '', state: 'sent' };
   await db.put('messages', msg);
-  sync.send('message', msg);
+  sync.send('message', { ...msg, from: 'them' });
+  // Además, publica el dibujo completo en el espacio privado (Firebase).
+  fb.shareDrawing?.(current).catch(() => {});
   toast(t('toast.sent'), { icon: '💌' }); sound('send');
 }
 async function duplicateDrawing() {

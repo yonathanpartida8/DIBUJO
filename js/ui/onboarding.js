@@ -47,6 +47,6 @@ export function renderOnboarding(ctx) {
     store.set('partner', { name: data.partner.trim() || 'Mi amor' });
     if (data.since) store.set('couple', { since: new Date(data.since).getTime() });
     store.set({ onboarded: true });
-    go('us');
+    go('home');
   }
 }

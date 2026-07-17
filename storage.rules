@@ -1,0 +1,21 @@
+rules_version = '2';
+// ============================================================
+// Reglas de Firebase Storage para Dibujo.
+// Pega estas reglas en: Firebase Console → Storage → Rules.
+// Los archivos de cada pareja viven en couples/{cid}/** y solo
+// los miembros del espacio pueden leerlos/escribirlos.
+// ============================================================
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /couples/{cid}/{allPaths=**} {
+      allow read, write: if request.auth != null
+        && request.auth.uid in firestore.get(/databases/(default)/documents/couples/$(cid)).data.members
+        && (request.resource == null || request.resource.size < 25 * 1024 * 1024);
+    }
+    match /users/{uid}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+  }
+}

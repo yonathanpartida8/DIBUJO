@@ -205,3 +205,213 @@
 .segment { display: inline-flex; background: var(--surface-inset); border-radius: var(--r-pill); padding: 4px; gap: 2px; }
 .segment button { padding: 7px 14px; border-radius: var(--r-pill); font-size: 0.82rem; font-weight: 700; color: var(--text-2); }
 .segment button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+
+/* ============================================================
+   v2 — Login y sistema de pareja
+   ============================================================ */
+.login-view { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: var(--s-5); }
+.login-card {
+  width: min(420px, 100%); text-align: center;
+  background: var(--glass); backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-lg);
+  padding: var(--s-7) var(--s-5); animation: modalIn var(--dur-3) var(--ease-soft);
+}
+.login-heart { animation: heartbeat 1.8s var(--ease-soft) infinite; display: inline-block; }
+.login-title { font-family: var(--font-round); font-size: 2rem; font-weight: 800; margin-top: 6px; }
+.login-sub { color: var(--text-2); margin: 10px 0 22px; white-space: pre-line; line-height: 1.5; }
+.login-google { background: var(--surface); gap: 10px; }
+.login-note { color: var(--text-3); font-size: 0.75rem; margin-top: 16px; line-height: 1.5; }
+.login-option {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 16px; margin-top: 10px; box-shadow: var(--shadow-sm);
+  transition: transform var(--dur-1) var(--ease);
+}
+.login-option:active { transform: scale(0.97); }
+.lo-emoji { font-size: 1.7rem; }
+.lo-main { flex: 1; }
+.lo-title { font-weight: 800; }
+.lo-sub { color: var(--text-2); font-size: 0.8rem; margin-top: 2px; }
+.lo-arrow { color: var(--text-3); font-size: 1.4rem; }
+.invite-code {
+  font-family: monospace; font-size: 2rem; font-weight: 800; letter-spacing: 4px;
+  background: var(--surface-inset); border: 2px dashed var(--line-2); border-radius: var(--r-lg);
+  padding: 18px; margin: 16px 0; user-select: all;
+}
+.invite-input { text-align: center; font-family: monospace; font-size: 1.4rem; letter-spacing: 3px; text-transform: uppercase; }
+.login-waiting { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text-2); font-size: 0.85rem; margin: 14px 0 6px; }
+.pulse-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--primary); animation: recPulse 1.4s infinite; }
+
+/* ============================================================
+   v2 — Widgets del inicio
+   ============================================================ */
+.widget-board { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-3); grid-auto-rows: 108px; grid-auto-flow: dense; }
+.widget {
+  position: relative; overflow: hidden;
+  background: var(--glass); backdrop-filter: blur(14px);
+  border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-sm);
+  padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center;
+  transition: transform var(--dur-2) var(--ease-soft), box-shadow var(--dur-2) var(--ease);
+}
+.widget:active { transform: scale(0.98); }
+.w-content { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.w-big { font-family: var(--font-round); font-size: 1.9rem; font-weight: 800; line-height: 1.1; }
+.w-cap { font-weight: 700; font-size: 0.8rem; }
+.w-sub { color: var(--text-2); font-size: 0.72rem; }
+.w-quote { font-size: 0.92rem; font-weight: 600; line-height: 1.4; padding: 4px; }
+.w-img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-md); position: absolute; inset: 0; }
+.w-img + .w-cap { position: absolute; bottom: 8px; left: 8px; right: 8px; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
+.w-empty { opacity: 0.75; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.w-disc-mini { width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle at center, var(--surface) 18%, #3a3244 20%, #2c2734 70%); border: 2px solid var(--line); }
+.w-disc-mini.spin { animation: vinylSpin 3s linear infinite; }
+.widget-board.editing .widget.jiggle { animation: jiggle 0.32s ease-in-out infinite alternate; }
+@keyframes jiggle { from { transform: rotate(-0.7deg); } to { transform: rotate(0.7deg); } }
+.w-del, .w-size, .w-style {
+  position: absolute; top: 4px; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+  font-size: 0.75rem; display: grid; place-items: center; z-index: 3;
+}
+.w-del { left: 4px; color: #d66; }
+.w-size { right: 4px; }
+.w-style { right: 34px; }
+.w-add { border-style: dashed; opacity: 0.8; flex-direction: column; gap: 4px; display: flex; }
+
+/* ============================================================
+   v2 — Carrusel de dibujos compartidos
+   ============================================================ */
+.shared-carousel { display: flex; gap: var(--s-3); overflow-x: auto; padding: 4px 2px 10px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.shared-carousel::-webkit-scrollbar { display: none; }
+.shared-card {
+  flex: 0 0 168px; scroll-snap-align: start; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm); transition: transform var(--dur-2) var(--ease-soft);
+}
+.shared-card:active { transform: scale(0.96); }
+.sc-img { aspect-ratio: 3/4; background: var(--surface-3); }
+.sc-img img { width: 100%; height: 100%; object-fit: cover; }
+.sc-meta { padding: 8px 10px 10px; }
+.sc-title { font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-sub { color: var(--text-2); font-size: 0.68rem; margin-top: 2px; }
+.sc-rx { font-size: 0.75rem; margin-top: 4px; }
+.shared-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; aspect-ratio: 3/4.4; padding: 12px; border-style: dashed; }
+
+/* ============================================================
+   v2 — Tocadiscos
+   ============================================================ */
+.vinyl-overlay { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; background: rgba(30,25,35,.55); backdrop-filter: blur(8px); animation: fadeIn var(--dur-2) var(--ease); }
+.vinyl-overlay.out { opacity: 0; transition: opacity var(--dur-2) var(--ease); }
+@keyframes fadeIn { from { opacity: 0; } }
+.vinyl-bg { position: absolute; inset: 0; filter: blur(48px) saturate(1.4) brightness(0.7); opacity: 0.55; transition: background var(--dur-3) var(--ease); }
+.vinyl-card {
+  position: relative; width: min(380px, calc(100% - 32px));
+  background: var(--glass); backdrop-filter: blur(28px) saturate(1.5);
+  border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-lg);
+  padding: var(--s-6) var(--s-5); text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  animation: modalIn var(--dur-3) var(--ease-soft);
+}
+.vinyl-close { position: absolute; top: 12px; right: 12px; }
+.vinyl-disc {
+  position: relative; width: 190px; height: 190px; border-radius: 50%;
+  background: radial-gradient(circle, #4a4152 16%, #2c2734 17%, #241f2c 100%);
+  box-shadow: var(--shadow-lg), inset 0 0 30px rgba(0,0,0,.6);
+  display: grid; place-items: center;
+}
+.vinyl-disc.spin { animation: vinylSpin 4s linear infinite; }
+@keyframes vinylSpin { to { transform: rotate(360deg); } }
+.vinyl-grooves { position: absolute; inset: 14px; border-radius: 50%; background: repeating-radial-gradient(circle, transparent 0 3px, rgba(255,255,255,.045) 3px 4px); }
+.vinyl-label { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--rose), var(--lav)); display: grid; place-items: center; font-size: 1.5rem; box-shadow: inset 0 0 8px rgba(0,0,0,.25); }
+.vinyl-cover { position: absolute; } /* reservado para portada flotante */
+.vinyl-cover img { width: 74px; height: 74px; border-radius: 50%; object-fit: cover; }
+.vinyl-title { font-family: var(--font-round); font-weight: 800; font-size: 1.15rem; margin-top: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vinyl-artist { color: var(--text-2); font-size: 0.85rem; }
+.vinyl-eq { display: flex; align-items: flex-end; gap: 3px; height: 38px; margin: 6px 0 2px; }
+.vinyl-eq i { width: 5px; height: 6px; border-radius: 3px; background: linear-gradient(180deg, var(--rose), var(--lav)); transition: height 0.09s linear; }
+.vinyl-seek { display: flex; align-items: center; gap: 8px; width: 100%; }
+.v-time { font-size: 0.72rem; color: var(--text-2); width: 38px; }
+.vinyl-controls { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.vinyl-play {
+  width: 60px; height: 60px; border-radius: 50%; font-size: 1.5rem; color: #fff;
+  background: linear-gradient(135deg, var(--rose), var(--lav));
+  box-shadow: 0 8px 22px rgba(239,146,166,.45);
+  transition: transform var(--dur-1) var(--ease);
+}
+.vinyl-play:active { transform: scale(0.9); }
+.vinyl-actions { display: flex; gap: 8px; margin-top: 6px; }
+.vinyl-mini {
+  position: fixed; left: 12px; bottom: calc(96px + var(--safe-b)); z-index: 600;
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  background: var(--glass); backdrop-filter: blur(18px);
+  border: 1px solid var(--line); border-radius: var(--r-pill); box-shadow: var(--shadow-md);
+  max-width: 70vw; animation: toastIn var(--dur-2) var(--ease-soft);
+}
+.vm-disc { font-size: 1.2rem; }
+.vm-disc.spin { animation: vinylSpin 3s linear infinite; display: inline-block; }
+.vm-name { font-size: 0.8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vm-btn { font-size: 0.9rem; padding: 4px; }
+
+/* ============================================================
+   v2 — Chat pro (fijados, responder, reacciones, audio)
+   ============================================================ */
+.chat-pinned, .chat-replybar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+  background: var(--surface-2); border-bottom: 1px solid var(--line);
+  font-size: 0.82rem;
+}
+.chat-replybar { border-top: 1px solid var(--line); border-bottom: none; }
+.cp-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.cp-x { color: var(--text-3); padding: 4px 8px; }
+.bq { border-left: 3px solid var(--accent); background: rgba(255,255,255,.16); border-radius: 8px; padding: 5px 9px; margin-bottom: 5px; }
+.bubble.them .bq { background: var(--surface-2); }
+.bq-name { font-size: 0.68rem; font-weight: 800; opacity: 0.85; }
+.bq-text { font-size: 0.78rem; opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+.b-rx { position: absolute; bottom: -12px; right: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 1px 7px; font-size: 0.75rem; box-shadow: var(--shadow-sm); }
+.bubble { position: relative; }
+.bubble.pop-in { animation: bubblePop var(--dur-3) var(--ease-soft); }
+@keyframes bubblePop { 0% { opacity: 0; transform: translateY(14px) scale(0.8); } 60% { transform: translateY(-2px) scale(1.04); } 100% { opacity: 1; transform: none; } }
+.rx-row { display: flex; justify-content: space-around; padding: 4px 0 12px; }
+.rx-btn { font-size: 1.6rem; padding: 6px; border-radius: 50%; transition: transform var(--dur-1) var(--ease-soft); }
+.rx-btn:active { transform: scale(1.4); }
+.send-btn.sending svg { animation: sendFly 0.4s var(--ease) forwards; }
+@keyframes sendFly { 40% { transform: translate(18px, -14px) scale(0.6); opacity: 0; } 41% { transform: translate(-14px, 10px) scale(0.6); } 100% { transform: none; opacity: 1; } }
+.audio-bubble { display: flex; align-items: center; gap: 8px; min-width: 170px; padding: 2px 0; }
+.ab-play { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.28); font-size: 0.85rem; flex: none; }
+.bubble.them .ab-play { background: var(--surface-3); }
+.ab-wave { display: flex; align-items: center; gap: 2px; flex: 1; }
+.ab-wave i { width: 3px; border-radius: 2px; background: currentColor; opacity: 0.65; }
+.ab-wave.playing i { animation: wavePlay 0.9s ease-in-out infinite alternate; }
+@keyframes wavePlay { to { transform: scaleY(1.6); } }
+.ab-dur { font-size: 0.68rem; opacity: 0.8; }
+
+/* ============================================================
+   v2 — Logros
+   ============================================================ */
+.ach-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.ach-card {
+  position: relative; background: var(--surface); border: 1.5px solid var(--rar, var(--line));
+  border-radius: var(--r-lg); padding: 14px 10px; text-align: center;
+  opacity: 0.55; filter: grayscale(0.7);
+}
+.ach-card.unlocked { opacity: 1; filter: none; box-shadow: 0 4px 18px var(--glow, transparent); }
+.ach-emoji { font-size: 1.8rem; }
+.ach-name { font-weight: 800; font-size: 0.85rem; margin-top: 4px; }
+.ach-desc { color: var(--text-2); font-size: 0.7rem; margin-top: 2px; }
+.ach-rar { display: inline-block; margin-top: 6px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--rar); }
+.ach-reward { font-size: 0.68rem; margin-top: 4px; color: var(--text-2); }
+.ach-pop {
+  position: fixed; top: calc(var(--safe-t) + 14px); left: 50%; transform: translateX(-50%);
+  z-index: 1500; display: flex; align-items: center; gap: 12px;
+  background: var(--glass); backdrop-filter: blur(22px);
+  border: 1.5px solid var(--rar); border-radius: var(--r-lg);
+  box-shadow: 0 10px 34px var(--glow); padding: 12px 18px;
+  animation: achIn 0.5s var(--ease-soft);
+}
+.ach-pop.out { opacity: 0; transform: translateX(-50%) translateY(-16px); transition: all var(--dur-3) var(--ease); }
+@keyframes achIn { from { opacity: 0; transform: translateX(-50%) translateY(-24px) scale(0.9); } }
+.ach-pop-emoji { font-size: 2rem; animation: heartbeat 1s var(--ease-soft) 2; }
+.ach-pop-title { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--rar); }
+.ach-pop-name { font-weight: 800; }
+.ach-pop-more { font-size: 0.72rem; color: var(--text-2); }
+
+/* Assets */
+.asset-fav { position: absolute; top: 4px; right: 4px; font-size: 0.9rem; background: var(--glass); border-radius: 50%; width: 26px; height: 26px; }

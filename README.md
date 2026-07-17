@@ -1,110 +1,117 @@
-# 💕 Dibujo — un lienzo para dos
+# 💕 Dibujo — un espacio privado para dos
 
-Una **PWA instalable** (Android / iPhone) para que las parejas dibujen juntas,
-compartan sus obras e intercambien dibujos en tiempo real. Interfaz moderna,
-minimalista y cálida, con una paleta **100% pastel**.
+**PWA instalable** (Android / iPhone) para que las parejas dibujen juntas a
+distancia y en tiempo real. Interfaz premium en **español latino**, 100% pastel,
+inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
 
-No usa ningún framework ni paso de compilación: es **JavaScript modular (ES
-modules)**, rápido, ligero y totalmente offline para dibujar.
+Sin frameworks ni build: **JavaScript ES2024 modular**, Canvas API, Firebase y
+service worker offline-first.
 
 ---
 
-## ✨ Funcionalidades
+## ✨ Qué incluye
 
-### 🎨 Estudio de dibujo profesional
-- **+15 pinceles**: lápiz, pluma, bolígrafo, marcador, pincel artístico, acuarela,
-  aerógrafo, tiza, carboncillo, crayón, pixel brush y caligrafía.
-- **Borradores**: normal, suave y por píxeles.
-- **Cubeta inteligente** con detección de bordes (flood-fill con tolerancia y cierre
-  de huecos) — solo rellena la zona cerrada.
-- **Cuentagotas**, **rueda cromática** (anillo de tono + cuadro SV) y paleta pastel.
-- **Regla / líneas rectas**, figuras (rect, círculo, triángulo, estrella, polígono).
-- **Simetría** horizontal, vertical, 4 ejes y radial (reproducible en la grabación).
-- **Transformar capa**: voltear H/V y rotar.
-- **Capas ilimitadas**: opacidad, 15 modos de mezcla, bloquear, ocultar, duplicar,
-  combinar y reordenar.
-- Ajustes de pincel: tamaño, dureza, flujo, **suavizado**, **estabilizador** y
-  **presión** del stylus.
-- **Deshacer / rehacer** amplios (snapshots por capa).
-- **Zoom y desplazamiento** con dos dedos.
+### ☁️ Firebase (tiempo real)
+- **Authentication con Google** (popup con respaldo redirect para PWA iOS),
+  sesión persistente, perfil automático con foto y nombre.
+- **Firestore en tiempo real** con caché persistente offline multi-pestaña.
+- **Storage** para los dibujos completos compartidos (capas + proceso).
+- **Presence**: en línea, "dibujando ahora" y última conexión con heartbeats.
+- **Analytics** (carga tolerante a fallos).
+- Reglas de seguridad listas para pegar: [`firestore.rules`](firestore.rules) y
+  [`storage.rules`](storage.rules).
 
-### 🖼️ Lienzo personalizable
-Color del papel, texturas (reciclado, acuarela, libreta, pergamino, lienzo, madera,
-cartulina, puntos), fondo transparente, fondos personalizados, cuadrícula y guías.
+### 💑 Sistema de pareja
+Al iniciar sesión eliges: **entrar sin pareja**, **invitar a tu pareja** (código
+único `AB7K-XP93`) o **introducir un código**. Al vincularse se crea un espacio
+privado permanente: dibujos, chat, stickers, GIF, audios, música, recuerdos,
+logros y widgets, todo sincronizado en tiempo real y accesible solo para ambos.
 
-### ⏱️ Reproducción del proceso (¡destacada!)
-Cada dibujo **graba automáticamente los trazos vectoriales** (no es una grabación de
-pantalla). El **temporizador solo avanza mientras se dibuja** — las pausas no cuentan.
-Reproductor con barra de avance/retroceso, velocidades (0.5×–8×), pausar/reanudar y
-**estadísticas**: tiempo real dibujando, nº de trazos, colores y herramientas usadas,
-fechas de creación y edición.
+La capa de sync es intercambiable: `FirebaseTransport` (pareja) o
+`BroadcastTransport` (modo local sin cuenta) con la misma interfaz.
 
-### 🎬 Multimedia
-GIFs (**API de Klipy**), imágenes de la galería, texto, emojis, stickers, y **música
-por dibujo**. Notas de voz y audio en el chat. Objetos arrastrables, escalables y
-rotables sobre el lienzo.
+### 🏠 Pantalla principal
+- **Widgets** de colocación libre (mantén presionado para editar, estilo iOS):
+  días juntos, cuenta regresiva, clima, música, último dibujo, actividad,
+  frase del día, recuerdos, notas, foto favorita, cumpleaños, calendario,
+  objetivos, logros, estado de la pareja y racha. Cada uno se mueve,
+  redimensiona, oculta y personaliza (color + transparencia).
+- **Dibujos compartidos**: carrusel horizontal de tarjetas con reacciones,
+  comentarios, favoritos, descarga, ampliación, historial del proceso, autor,
+  fecha y hora.
 
-### 💌 Compartir y galería
-Enviar / recibir / editar / duplicar / comentar / reaccionar dibujos. Carpetas,
-favoritos, historial y filtros (todos, favoritos, recibidos, míos).
+### 🎨 Estudio
+Todo lo del motor v1 (15+ pinceles, acuarela, aerógrafo, tiza, carboncillo,
+crayón, pixel, caligrafía, 3 borradores, cubeta inteligente, cuentagotas, rueda
+cromática, figuras, simetría, capas ilimitadas con modos de mezcla,
+deshacer/rehacer, grabación del proceso con tiempo activo real y reproductor
+con velocidades) más:
+
+- **Regla profesional**: se mueve, gira, bloquea y redimensiona; muestra cm y
+  grados; actúa como **barrera física** — ningún pincel, borrador, spray ni
+  acuarela pinta del otro lado (recorte de semiplano, fiel también en la
+  reproducción del proceso).
+- **Simular Pincel Virtual**: un lápiz elegante con inclinación sigue tu dedo y
+  el trazo sale desde su punta — siempre ves dónde dibujas.
+- **Modo zen**: botón flotante que oculta todas las barras con animaciones
+  suaves; el lienzo nunca queda tapado.
+- **Biblioteca de assets**: imágenes, GIF, stickers, videos, música, pinceles,
+  texturas, fondos, marcos y plantillas, con buscador, favoritos y recientes.
+
+### 💿 Música (tocadiscos)
+Reproductor personalizado con disco de vinilo animado, portada, ecualizador en
+vivo (WebAudio), fondo dinámico, bucle, volumen, biblioteca y mini-reproductor
+flotante. Cada dibujo puede tener su canción (suena al abrirlo).
 
 ### 💬 Chat
-Mensajes, fotos, GIFs, stickers, emojis, dibujos y notas de voz. Indicadores de
-*escribiendo…*, *en línea*, *última conexión* y estados *enviado / entregado / leído*.
+Responder (citas), editar, eliminar, reacciones, mensajes fijados,
+escribiendo…, en línea, última conexión, enviado/entregado/leído, fotos,
+videos, GIF (el buscador siempre inicia con **bear love** 🐻), stickers,
+mini dibujos a mano, audios compactos con onda y animaciones de envío.
 
-### 👩‍❤️‍👨 Funciones para parejas ("Nosotros")
-Contador de tiempo juntos (en vivo), racha de dibujo, retos diarios, metas, logros e
-insignias, calendario de recuerdos, perfiles con avatar y color, **invitación por
-enlace** y **dibujo colaborativo en tiempo real**.
+### 🏆 Logros
+**315 logros** en 21 categorías × 15 niveles con rarezas (común, raro, épico,
+legendario, mítico), insignias, recompensas, progreso y celebración animada.
 
-### ⚙️ Ajustes completos
-Temas **pastel / claro / oscuro / automático**, idioma (ES/EN), tamaño de interfaz,
-calidad, rendimiento, animaciones, sonidos, vibración, notificaciones, sincronización,
-privacidad, y **copia de seguridad** (exportar / importar todo).
+### 🔊 Sonidos
+Sonidos satisfactorios sintetizados (0 KB de audio): dibujar, borrar, enviar y
+recibir mensajes, abrir/cerrar paneles, logros y guardado — **todos
+configurables** en Ajustes.
 
----
-
-## 🏗️ Arquitectura
-
-```
-index.html · manifest.webmanifest · sw.js       (shell PWA + offline)
-css/        reset · theme (tokens pastel) · layout · components · canvas
-js/core/    bus · store · db (IndexedDB) · i18n · router · sync · ui · utils · theme-apply
-js/drawing/ engine · brushes · paint · layers · history · floodfill · color · recorder · player
-js/media/   klipy (API de GIFs)
-js/ui/      studio · gallery · chat · us · settings · onboarding · player-ui · icons
-js/couples/ features (rachas, logros, retos, recuerdos)
-assets/     icons (generados con scripts/make-icons.mjs)
-```
-
-**Sincronización en tiempo real:** la capa `sync` usa `BroadcastChannel` como
-transporte por defecto (funciona de verdad entre pestañas/ventanas — abre el enlace de
-invitación en otra pestaña para dibujar juntos). La interfaz (`connect / send / on`) es
-agnóstica, así que se puede sustituir por un backend (WebSocket, WebRTC, Firebase,
-Supabase Realtime) sin tocar el resto de la app.
-
-**Almacenamiento local:** IndexedDB para dibujos, carpetas, mensajes, multimedia y
-recuerdos; `localStorage` para ajustes/perfil. Todo funciona **offline**.
+### 📱 Optimización móvil
+Pantalla completa, notch/Dynamic Island (safe areas), sin zoom accidental,
+sin barras blancas, animaciones GPU, eventos coalescidos para 60–165 Hz,
+consumo moderado y funcionamiento con conexión lenta u offline.
 
 ---
 
-## 🚀 Cómo ejecutar
+## 🏗️ Estructura
 
-Al ser estático, sírvelo con cualquier servidor HTTP:
-
-```bash
-python3 -m http.server 8080
-# o
-npx serve .
+```
+index.html · manifest.webmanifest · sw.js        shell PWA offline
+firestore.rules · storage.rules                  seguridad Firebase
+css/          reset · theme · layout · components · canvas
+js/core/      bus · store · db · i18n · router · sync · firebase · sounds · ui · utils
+js/drawing/   engine · brushes · paint · layers · history · floodfill · color
+              recorder · player · ruler
+js/ui/        login · home · widgets · studio · gallery · chat · us · settings
+              vinyl · assets · achievements-ui · player-ui · onboarding · icons
+js/couples/   features · achievements
+js/media/     klipy (GIF)
 ```
 
-Abre `http://localhost:8080` en el móvil (o en el navegador con vista móvil) y usa
-"Añadir a pantalla de inicio" / "Instalar app" para instalarla como PWA.
+## 🚀 Ejecutar
 
-### Regenerar iconos
 ```bash
-node scripts/make-icons.mjs
+python3 -m http.server 8080   # o npx serve .
 ```
+
+Ábrela en el teléfono e instálala ("Añadir a pantalla de inicio").
+
+**Firebase**: el proyecto ya está configurado (`lovedrawing-33b5a`). Para
+activar el espacio de pareja en producción: en Firebase Console habilita
+Authentication → Google, agrega tu dominio a los dominios autorizados, y pega
+las reglas de `firestore.rules` y `storage.rules`.
 
 ---
 

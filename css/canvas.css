@@ -126,3 +126,54 @@
 /* GIF results */
 .gif-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 300px; overflow-y: auto; }
 .gif-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--r-sm); }
+
+/* ============================================================
+   v2 — Modo zen, regla física y lápiz virtual
+   ============================================================ */
+.st-top, .st-dock, .st-rail { transition: transform var(--dur-3) var(--ease-soft), opacity var(--dur-3) var(--ease); }
+.studio[data-zen="1"] .st-top { transform: translateY(-120%); opacity: 0; pointer-events: none; }
+.studio[data-zen="1"] .st-dock { transform: translateY(120%); opacity: 0; pointer-events: none; }
+.studio[data-zen="1"] .st-rail { transform: translateY(-50%) translateX(-130%); opacity: 0; pointer-events: none; }
+.zen-fab {
+  position: absolute; right: 10px; top: 10px; z-index: 30;
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--glass); backdrop-filter: blur(16px);
+  border: 1px solid var(--line); box-shadow: var(--shadow-md);
+  display: grid; place-items: center;
+  transition: transform var(--dur-2) var(--ease-soft);
+}
+.zen-fab svg { width: 22px; height: 22px; }
+.zen-fab:active { transform: scale(0.88) rotate(90deg); }
+
+/* Regla profesional */
+.ruler {
+  position: absolute; z-index: 58; pointer-events: auto; touch-action: none;
+  background: linear-gradient(180deg, rgba(255,251,240,0.92), rgba(255,244,228,0.88));
+  border: 1.5px solid rgba(160,140,120,0.5); border-radius: 10px;
+  box-shadow: 0 6px 22px rgba(90,70,60,0.25);
+  cursor: grab;
+}
+.ruler.locked { outline: 2px solid var(--rose-deep); }
+.ruler-ticks { position: absolute; inset: 0; pointer-events: none; }
+.ruler-deg {
+  position: absolute; right: 54px; bottom: 6px; pointer-events: none;
+  font-family: monospace; font-size: 22px; font-weight: 700; color: rgba(90,78,88,0.75);
+}
+.ruler-btn, .ruler-handle {
+  position: absolute; width: 48px; height: 48px; border-radius: 50%;
+  background: var(--surface); border: 1.5px solid var(--line-2); box-shadow: var(--shadow-sm);
+  display: grid; place-items: center; font-size: 22px; touch-action: none; user-select: none;
+}
+.ruler-lock { left: 8px; bottom: -22px; }
+.ruler-rot { right: -24px; top: 50%; transform: translateY(-50%); cursor: grab; background: var(--accent-soft); }
+.ruler-size { left: -24px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+
+/* Lápiz virtual */
+.virtual-pencil {
+  position: absolute; left: 0; top: 0; z-index: 70; pointer-events: none;
+  transform-origin: 17px 0; /* la punta */
+  margin-top: 0; margin-left: -17px;
+  filter: drop-shadow(0 6px 10px rgba(60,40,60,0.35));
+  transition: transform 0.05s linear;
+}
+.virtual-pencil.drawing { filter: drop-shadow(0 3px 6px rgba(60,40,60,0.45)); }

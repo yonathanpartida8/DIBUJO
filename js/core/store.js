@@ -6,6 +6,12 @@ const KEY = 'dibujo.store.v1';
 
 const defaults = {
   onboarded: false,
+  account: {
+    mode: null,            // 'google' | 'local' | null (sin decidir)
+    uid: null,
+    coupleId: null,
+  },
+  widgets: null,           // disposición de widgets del inicio (null = por defecto)
   settings: {
     theme: 'pastel',        // pastel | light | dark | auto
     language: 'es',         // es | en
@@ -21,6 +27,8 @@ const defaults = {
     privacyLock: 'off',
     stabilizerDefault: 45,
     smoothingDefault: 30,
+    // Sonidos por evento (todos configurables).
+    sndDraw: 'off', sndErase: 'off', sndMsg: 'on', sndPanel: 'on', sndAchieve: 'on', sndSave: 'on',
   },
   profile: {
     name: 'Yo',

@@ -21,8 +21,8 @@ export async function go(name, params = {}) {
   // Tab highlight
   const tabRoute = name === 'studio-new' ? 'studio' : name;
   $$('.tab').forEach((tb) => tb.classList.toggle('active', tb.dataset.route === tabRoute));
-  // Studio owns full screen
-  document.body.dataset.fullscreen = (name === 'studio' || name === 'studio-new' || name === 'player') ? '1' : '0';
+  // Studio y pantallas de entrada ocupan todo (sin barra de pestañas).
+  document.body.dataset.fullscreen = ['studio', 'studio-new', 'player', 'login', 'pairing', 'onboarding'].includes(name) ? '1' : '0';
   bus.emit('route:change', name);
   try { history.replaceState({ route: name }, '', `?route=${name}`); } catch {}
   root.scrollTo?.(0, 0);
