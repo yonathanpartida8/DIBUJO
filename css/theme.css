@@ -33,15 +33,23 @@
   --safe-r: env(safe-area-inset-right, 0px);
 
   /* Accent pastels (shared across themes) */
-  --rose: #f7b7c4;
-  --rose-deep: #ef92a6;
-  --blush: #ffd9e4;
-  --lav: #cbb6e8;
-  --lav-deep: #a98fd4;
-  --mint: #b8e0d2;
-  --peach: #ffd7bd;
-  --sky: #bcd8f2;
-  --butter: #fdeec2;
+  --rose: #f2a9b8;
+  --rose-deep: #e8899e;
+  --blush: #fbdde6;
+  --lav: #c9b5e6;
+  --lav-deep: #a68fd0;
+  --mint: #b7dccb;
+  --peach: #f7d4bc;
+  --sky: #bcd4ec;
+  --butter: #f6e8c6;
+
+  /* Identidad de pareja: rosa = tu pareja · verde salvia = tú */
+  --her: #e8899e;
+  --her-soft: #fbe9ee;
+  --her-ink: #a45064;
+  --mine: #8fbca4;
+  --mine-soft: #e9f3ed;
+  --mine-ink: #4e7a62;
 }
 
 /* ---------- Pastel (default, warm cream) ---------- */

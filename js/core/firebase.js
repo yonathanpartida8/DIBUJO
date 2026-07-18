@@ -49,6 +49,9 @@ class FirebaseService {
     } catch { this.db = fsM.getFirestore(this.app); }
     this.auth = authM.getAuth(this.app);
     this.auth.languageCode = 'es';
+    // Persistencia robusta (IndexedDB): la sesión sobrevive reinicios y
+    // funciona en PWA instalada / WebView de Capacitor.
+    try { await authM.setPersistence(this.auth, authM.indexedDBLocalPersistence); } catch {}
     this.storage = stM.getStorage(this.app);
     this._mods = { appM, authM, fsM, stM };
     // Analytics: opcional, nunca debe romper la app (p.ej. sin cookies/offline).
@@ -83,12 +86,19 @@ class FirebaseService {
     const provider = new authM.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     try {
-      const cred = await authM.signInWithPopup(this.auth, provider);
+      const cred = await authM.signInWithPopup(this.auth, provider, authM.browserPopupRedirectResolver);
       await this._onSignedIn(cred.user);
       return cred.user;
     } catch (e) {
+      const code = String(e?.code || '');
       // Los WebView/PWA móviles suelen bloquear popups → redirect.
-      if (String(e?.code).includes('popup')) { await authM.signInWithRedirect(this.auth, provider); return null; }
+      if (code.includes('popup-blocked') || code.includes('operation-not-supported') || code.includes('cancelled-popup-request')) {
+        await authM.signInWithRedirect(this.auth, provider, authM.browserPopupRedirectResolver);
+        return null;
+      }
+      if (code.includes('popup-closed')) throw new Error('Cerraste la ventana antes de terminar. Intenta de nuevo.');
+      if (code.includes('unauthorized-domain')) throw new Error('Este dominio no está autorizado en Firebase. Agrégalo en Authentication → Settings → Authorized domains.');
+      if (code.includes('network')) throw new Error('Sin conexión. Revisa tu internet e intenta otra vez.');
       throw e;
     }
   }

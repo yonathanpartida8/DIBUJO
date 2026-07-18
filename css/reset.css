@@ -10,6 +10,9 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 img, svg, canvas, video { display: block; max-width: 100%; }
+/* Los iconos de trazo declaran fill="none" en el propio SVG; ninguna regla
+   de componente (fill: currentColor) debe rellenarlos. */
+svg[fill="none"] { fill: none !important; }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { background: none; border: none; cursor: pointer; }
 ul, ol { list-style: none; }

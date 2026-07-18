@@ -106,7 +106,31 @@ function bubbleContent(bubble, m) {
     else bubble.append(el('img', { src: m.src, style: { maxWidth: '200px' } }));
   }
   else if (m.type === 'sticker' || m.type === 'emoji') bubble.append(el('div', { style: { fontSize: '3rem' }, text: m.text }));
-  else if (m.type === 'drawing') { const im = el('img', { src: m.thumb, style: { maxWidth: '200px', cursor: 'pointer' } }); im.onclick = () => m.drawingId && go('studio', { id: m.drawingId }); bubble.append(im); if (m.text) bubble.append(el('div', { text: m.text })); }
+  else if (m.type === 'drawing') {
+    if (m.secret && !m.revealed && m.from !== 'me') {
+      // Dibujo secreto: velo con candado; se revela al pulsarlo.
+      const veil = el('button', { class: 'msg-secret' }, [
+        el('span', { class: 'ms-icon', html: icon('secret') }),
+        el('span', { class: 'ms-t', text: 'Dibujo secreto' }),
+        el('span', { class: 'ms-s', text: 'Toca para revelar' }),
+      ]);
+      veil.onclick = async (e) => {
+        e.stopPropagation();
+        m.revealed = true; await db.put('messages', m);
+        import('../core/sounds.js').then((x) => x.playFx('love'));
+        const im = el('img', { src: m.thumb, style: { maxWidth: '200px', cursor: 'pointer', filter: 'blur(24px)', transform: 'scale(1.05)' } });
+        im.onclick = () => m.drawingId && go('studio', { id: m.drawingId });
+        veil.replaceWith(im);
+        im.animate([{ filter: 'blur(24px)', transform: 'scale(1.05)' }, { filter: 'blur(0px)', transform: 'scale(1)' }], { duration: 900, easing: 'cubic-bezier(0.22,1,0.36,1)', fill: 'forwards' });
+      };
+      bubble.append(veil);
+    } else {
+      const im = el('img', { src: m.thumb, style: { maxWidth: '200px', cursor: 'pointer' } });
+      im.onclick = () => m.drawingId && go('studio', { id: m.drawingId });
+      bubble.append(im);
+    }
+    if (m.text) bubble.append(el('div', { text: m.text }));
+  }
   else if (m.type === 'audio') bubble.append(audioBubble(m));
   const time = el('span', { class: 'time' });
   time.append(document.createTextNode((m.edited ? 'editado · ' : '') + fmtTime(m.ts)));
@@ -267,14 +291,14 @@ function quickEmoji(field) {
 function openAttach(scroll) {
   const body = el('div', { class: 'grid-auto' });
   const s = sheet('Enviar', body);
-  const opt = (emoji, label, fn) => el('button', { class: 'tile', style: { padding: '18px', textAlign: 'center' }, onclick: fn }, [el('div', { style: { fontSize: '1.8rem' }, text: emoji }), el('div', { class: 'meta', html: `<div class="t">${label}</div>` })]);
+  const opt = (ic, label, fn) => el('button', { class: 'tile attach-tile', onclick: fn }, [el('div', { class: 'attach-ic', html: icon(ic) }), el('div', { class: 'meta', html: `<div class="t">${label}</div>` })]);
   body.append(
-    opt('🖼️', 'Foto', () => { s.close(); pickFile('image/*', (src) => commitOutgoing(scroll, { id: uid('msg'), ts: Date.now(), from: 'me', type: 'image', src, state: 'sent' })); }),
-    opt('🎬', 'Video', () => { s.close(); pickFile('video/*', (src) => commitOutgoing(scroll, { id: uid('msg'), ts: Date.now(), from: 'me', type: 'image', src, state: 'sent' })); }),
-    opt('🎞️', 'GIF', () => { s.close(); openGifPicker(scroll); }),
-    opt('🎨', 'Dibujo', () => { s.close(); openDrawingPicker(scroll); }),
-    opt('✍️', 'Mini dibujo', () => { s.close(); openMiniSketch(scroll); }),
-    opt('🌈', 'Sticker', () => { s.close(); openSticker(scroll); }),
+    opt('image', 'Foto', () => { s.close(); pickFile('image/*', (src) => commitOutgoing(scroll, { id: uid('msg'), ts: Date.now(), from: 'me', type: 'image', src, state: 'sent' })); }),
+    opt('video', 'Video', () => { s.close(); pickFile('video/*', (src) => commitOutgoing(scroll, { id: uid('msg'), ts: Date.now(), from: 'me', type: 'image', src, state: 'sent' })); }),
+    opt('gif', 'GIF', () => { s.close(); openGifPicker(scroll); }),
+    opt('toolBrush', 'Dibujo', () => { s.close(); openDrawingPicker(scroll); }),
+    opt('toolPencil', 'Mini dibujo', () => { s.close(); openMiniSketch(scroll); }),
+    opt('sticker', 'Sticker', () => { s.close(); openSticker(scroll); }),
   );
 }
 function openGifPicker(scroll) {
@@ -290,7 +314,16 @@ async function openDrawingPicker(scroll) {
   const drawings = await db.allByIndex('drawings', 'updatedAt', 'prev');
   const body = el('div', { class: 'grid-2' }); const s = sheet('Enviar dibujo', body);
   if (!drawings.length) body.append(el('p', { style: { color: 'var(--text-2)' }, text: 'Aún no tienes dibujos.' }));
-  drawings.forEach((d) => body.append(el('div', { class: 'tile', onclick: async () => { await sendDrawingToPartner(d); s.close(); toast(t('toast.sent'), { icon: '💌' }); go('chat'); } }, [el('div', { class: 'thumb' }, [el('img', { src: d.thumb })]), el('div', { class: 'meta', html: `<div class="t">${d.title || ''}</div>` })])));
+  drawings.forEach((d) => body.append(el('div', { class: 'tile', onclick: () => { s.close(); askHowToSend(d); } }, [el('div', { class: 'thumb' }, [el('img', { src: d.thumb })]), el('div', { class: 'meta', html: `<div class="t">${d.title || ''}</div>` })])));
+  function askHowToSend(d) {
+    const b2 = el('div');
+    const s2 = sheet('¿Cómo enviarlo?', b2);
+    const opt = (ic, title, sub, fn) => el('button', { class: 'row tappable', style: { width: '100%' }, onclick: async () => { s2.close(); await fn(); toast(t('toast.sent')); go('chat'); } }, [el('div', { class: 'r-ic', html: icon(ic) }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title }), el('div', { class: 'r-sub', text: sub })])]);
+    b2.append(
+      opt('send', 'Enviar normal', 'Tu pareja lo verá de inmediato', () => sendDrawingToPartner(d)),
+      opt('secret', 'Enviar como secreto', 'Llegará oculto; se revela al tocarlo', () => sendDrawingToPartner(d, { secret: true })),
+    );
+  }
 }
 // Mini dibujo a mano dentro del chat.
 function openMiniSketch(scroll) {
@@ -333,11 +366,12 @@ async function recordVoice(scroll) {
   } catch { toast('Permiso de micrófono denegado'); }
 }
 
-export async function sendDrawingToPartner(d) {
-  const m = { id: uid('msg'), ts: Date.now(), from: 'me', type: 'drawing', drawingId: d.id, thumb: d.thumb, text: '', state: 'sent' };
+export async function sendDrawingToPartner(d, { secret = false } = {}) {
+  const m = { id: uid('msg'), ts: Date.now(), from: 'me', type: 'drawing', drawingId: d.id, thumb: d.thumb, text: '', state: 'sent', secret };
   await db.put('messages', m);
   sync.send('message', { ...m, from: 'them' });
-  fb.shareDrawing?.(d).catch(() => {});
+  fb.shareDrawing?.(d).then(() => { if (secret) fb.patchSharedDrawing?.(d.id, { secret: true, revealed: false }); }).catch(() => {});
+  if (secret && !d.remote) { d.secret = true; await db.put('drawings', d).catch(() => {}); }
 }
 
 function updateBadge() { const b = $('#chat-badge'); if (b) b.hidden = unread === 0; }

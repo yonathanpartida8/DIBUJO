@@ -1,8 +1,31 @@
-# 💕 Dibujo — un espacio privado para dos
+# Dibujo — un espacio privado para dos
 
 **PWA instalable** (Android / iPhone) para que las parejas dibujen juntas a
-distancia y en tiempo real. Interfaz premium en **español latino**, 100% pastel,
+distancia y en tiempo real. Interfaz premium en **español latino**, pastel
+refinado (no infantil), iconografía SVG profesional (sin emojis en la UI),
 inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
+
+## Novedades v3 (rediseño premium)
+
+- **Home ultra limpia**: saludo dinámico por hora local (incluye "Buenas
+  madrugadas") con entrada animada, fondo **aurora WebGL2** que reacciona al
+  tacto (con degradación automática a CSS) y **solo dos botones**: Dibujar e
+  Inbox, con identidad de color (verde salvia = tú, rosa = tu pareja).
+- **Inbox**: adiós cuadrícula — feed vertical de tarjetas con profundidad,
+  autor con acento de color, fecha y hora, reacciones, favorito, proceso y
+  transición fluida al lienzo (View Transitions API).
+- **Barra de herramientas horizontal** fuera del lienzo (desplazable) con
+  ilustraciones SVG de cada herramienta y **rueda cromática** al final;
+  hoja aparte para herramientas adicionales.
+- **Dibujo Secreto**: envía lienzos ocultos; el receptor los toca y se
+  revelan con una animación de desenfoque → nitidez con destello.
+- **Reproductor con 3 modos**: vinilo girando, portada estática o minimalista.
+- **Chat** con identidad de color por autor, tipografía y burbujas pulidas.
+- **Auth Google endurecida**: persistencia IndexedDB, popup con resolver +
+  respaldo redirect, mensajes de error claros (dominio no autorizado, etc.).
+- **Multiplataforma**: workflow de GitHub Pages incluido y
+  `capacitor.config.json` + `scripts/build-www.mjs` para empaquetar la misma
+  base de código hacia Google Play.
 
 Sin frameworks ni build: **JavaScript ES2024 modular**, Canvas API, Firebase y
 service worker offline-first.
@@ -100,13 +123,25 @@ js/couples/   features · achievements
 js/media/     klipy (GIF)
 ```
 
-## 🚀 Ejecutar
+## 🚀 Ejecutar / Publicar
 
 ```bash
 python3 -m http.server 8080   # o npx serve .
 ```
 
-Ábrela en el teléfono e instálala ("Añadir a pantalla de inicio").
+**GitHub Pages**: activa Pages (Settings → Pages → GitHub Actions). El workflow
+`.github/workflows/deploy-pages.yml` publica automáticamente en cada push.
+Recuerda agregar `TU_USUARIO.github.io` a los dominios autorizados de Firebase
+Authentication.
+
+**Google Play (Capacitor)**:
+
+```bash
+node scripts/build-www.mjs        # empaqueta la app en ./www
+npm i -D @capacitor/cli @capacitor/core @capacitor/android
+npx cap add android && npx cap sync android
+npx cap open android              # compila el AAB en Android Studio
+```
 
 **Firebase**: el proyecto ya está configurado (`lovedrawing-33b5a`). Para
 activar el espacio de pareja en producción: en Firebase Console habilita

@@ -177,3 +177,36 @@
   transition: transform 0.05s linear;
 }
 .virtual-pencil.drawing { filter: drop-shadow(0 3px 6px rgba(60,40,60,0.45)); }
+
+/* ============================================================
+   v3 — Barra de herramientas horizontal (fuera del lienzo)
+   ============================================================ */
+.st-toolbar {
+  display: flex; align-items: center; gap: 4px;
+  overflow-x: auto; scrollbar-width: none;
+  padding: 4px 2px 6px;
+  -webkit-overflow-scrolling: touch;
+}
+.st-toolbar::-webkit-scrollbar { display: none; }
+.st-toolbar .st-tool {
+  width: 52px; height: 52px; flex: none; border-radius: 50%;
+  color: var(--text-2);
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+}
+.st-toolbar .st-tool svg { width: 27px; height: 27px; }
+.st-toolbar .st-tool.active {
+  background: var(--surface-3); color: var(--text);
+  box-shadow: inset 0 0 0 1.5px var(--line-2);
+}
+.st-toolbar .st-tool:active { transform: scale(0.86); }
+.st-sep { width: 1.5px; height: 30px; border-radius: 1px; background: var(--line-2); flex: none; margin: 0 4px; }
+.st-wheel-btn {
+  width: 48px; height: 48px; flex: none; border-radius: 50%;
+  padding: 4px;
+  background: conic-gradient(#f66 0deg, #fc6 60deg, #ff6 90deg, #6f6 150deg, #6ff 210deg, #66f 260deg, #f6f 320deg, #f66 360deg);
+  box-shadow: var(--shadow-sm);
+  display: grid; place-items: center;
+  transition: transform var(--dur-1) var(--ease);
+}
+.st-wheel-btn:active { transform: scale(0.88) rotate(20deg); }
+.st-wheel-core { display: block; width: 100%; height: 100%; border-radius: 50%; background: #5a4e58; border: 2.5px solid var(--surface); }

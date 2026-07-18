@@ -11,6 +11,7 @@ import { go } from '../core/router.js';
 import { todaysChallenge, generateInvite, checkAchievements, addMemory } from '../couples/features.js';
 import { ACHIEVEMENTS as ACH_ALL } from '../couples/achievements.js';
 import { openAchievements } from './achievements-ui.js';
+import { renderBoard } from './widgets.js';
 
 let counterInt;
 
@@ -33,6 +34,15 @@ export async function renderUs(ctx) {
     el('div', { class: 'avatar-pair' }, [avatar(s.profile, 'lg'), avatar(s.partner, 'lg')]),
     counterEl(),
   ]));
+
+  // Widgets personalizables (reubicados aquí desde la Home ultra limpia).
+  const wTitle = el('div', { class: 'section-title', text: 'Widgets' });
+  wTitle.append(el('span', { class: 'more', style: { color: 'var(--text-3)', fontWeight: 400 }, text: 'mantén presionado para editar' }));
+  view.append(wTitle);
+  const board = el('div', { class: 'widget-board' });
+  view.append(board);
+  renderBoard(board);
+  const offW = bus.on('widgets:refresh', () => renderBoard(board));
 
   // Streak + challenge
   const row = el('div', { class: 'grid-2', style: { marginTop: '12px' } });
@@ -84,7 +94,7 @@ export async function renderUs(ctx) {
 
   counterInt = setInterval(updateCounter, 1000);
   const off = bus.on('gallery:refresh', () => { renderGoals(); });
-  return { leave: () => { clearInterval(counterInt); off(); } };
+  return { leave: () => { clearInterval(counterInt); off(); offW(); } };
 
   // ---------- pieces ----------
   function counterEl() {

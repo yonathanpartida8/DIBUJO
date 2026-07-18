@@ -8,10 +8,12 @@ import { bus } from '../core/bus.js';
 import { toast } from '../core/ui.js';
 import { db } from '../core/db.js';
 import { uid } from '../core/utils.js';
+import { icon } from './icons.js';
 
 // Estado global del reproductor (persiste entre vistas).
 const state = window.__vinylState = window.__vinylState || {
   audio: null, track: null, playing: false, volume: 0.8, loop: true,
+  mode: localStorage.getItem('dibujo.playerMode') || 'vinyl', // vinyl | cover | minimal
 };
 
 let actx, analyser, srcNode;
@@ -74,16 +76,28 @@ export async function openVinyl(initialTrack) {
   const timeCur = el('span', { class: 'v-time', text: '0:00' });
   const timeTot = el('span', { class: 'v-time', text: '0:00' });
   const seek = el('input', { class: 'slider', type: 'range', min: 0, max: 1000, value: 0 });
-  const playBtn = el('button', { class: 'vinyl-play', text: '▶' });
-  const loopBtn = el('button', { class: 'icon-btn', text: '🔁' });
+  const playBtn = el('button', { class: 'vinyl-play', html: icon('playFilled') });
+  const loopBtn = el('button', { class: 'icon-btn', html: icon('loop') });
   const volSl = el('input', { class: 'slider', type: 'range', min: 0, max: 100, value: state.volume * 100, style: { width: '110px' } });
   const addBtn = el('button', { class: 'btn btn-soft btn-sm', text: '＋ Canción' });
   const listBtn = el('button', { class: 'btn btn-ghost btn-sm', text: 'Biblioteca' });
-  const closeBtn = el('button', { class: 'icon-btn vinyl-close', text: '✕' });
+  const closeBtn = el('button', { class: 'icon-btn vinyl-close', html: icon('close') });
 
-  card.append(closeBtn, disc, cover, title, artist, eq,
+  // Modos de visualización: vinilo girando · portada estática · minimalista.
+  const modes = el('div', { class: 'segment vinyl-modes' });
+  [['vinyl', 'Vinilo'], ['cover', 'Portada'], ['minimal', 'Mínimo']].forEach(([id, label]) => {
+    modes.append(el('button', { class: id === state.mode ? 'active' : '', text: label, onclick: (e) => {
+      state.mode = id; localStorage.setItem('dibujo.playerMode', id);
+      modes.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
+      e.target.classList.add('active');
+      card.dataset.mode = id;
+    } }));
+  });
+  card.dataset.mode = state.mode;
+
+  card.append(closeBtn, modes, disc, cover, title, artist, eq,
     el('div', { class: 'vinyl-seek' }, [timeCur, seek, timeTot]),
-    el('div', { class: 'vinyl-controls' }, [loopBtn, playBtn, el('span', { text: '🔊', style: { fontSize: '0.9rem' } }), volSl]),
+    el('div', { class: 'vinyl-controls' }, [loopBtn, playBtn, el('span', { class: 'vinyl-vol-ic', html: icon('volume') }), volSl]),
     el('div', { class: 'vinyl-actions' }, [addBtn, listBtn]));
 
   const a = ensureAudio();
@@ -105,9 +119,9 @@ export async function openVinyl(initialTrack) {
   const sync = () => {
     const t = state.track;
     title.textContent = t ? t.name : 'Sin música';
-    artist.textContent = t ? (t.artist || 'Su canción 🎶') : 'Agrega una canción para su espacio';
+    artist.textContent = t ? (t.artist || 'Su canción') : 'Agrega una canción para su espacio';
     disc.classList.toggle('spin', state.playing);
-    playBtn.textContent = state.playing ? '⏸' : '▶';
+    playBtn.innerHTML = state.playing ? icon('pauseFilled') : icon('playFilled');
     loopBtn.style.opacity = state.loop ? 1 : 0.4;
     cover.innerHTML = '';
     cover.hidden = !t?.cover;
@@ -178,10 +192,10 @@ function renderMini() {
   mini.hidden = false;
   mini.innerHTML = '';
   mini.append(
-    el('div', { class: 'vm-disc' + (state.playing ? ' spin' : ''), text: '💿' }),
+    el('div', { class: 'vm-disc' + (state.playing ? ' spin' : '') }),
     el('div', { class: 'vm-name', text: state.track.name }),
-    el('button', { class: 'vm-btn', text: state.playing ? '⏸' : '▶', onclick: (e) => { e.stopPropagation(); togglePlay(); } }),
-    el('button', { class: 'vm-btn', text: '✕', onclick: (e) => { e.stopPropagation(); state.audio?.pause(); mini.hidden = true; } }),
+    el('button', { class: 'vm-btn', html: state.playing ? icon('pauseFilled') : icon('playFilled'), onclick: (e) => { e.stopPropagation(); togglePlay(); } }),
+    el('button', { class: 'vm-btn', html: icon('close'), onclick: (e) => { e.stopPropagation(); state.audio?.pause(); mini.hidden = true; } }),
   );
   mini.onclick = () => { mini.hidden = true; openVinyl(); };
 }

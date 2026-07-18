@@ -13,16 +13,24 @@ export async function go(name, params = {}) {
   // Leave hook
   if (current && current.leave) { try { await current.leave(); } catch {} }
   const root = $('#view-root');
-  root.innerHTML = '';
   const ctx = { params, root };
   current = { name, leave: null };
-  const view = await render(ctx);
-  if (view && view.leave) current.leave = view.leave;
+  // Transición fluida entre pantallas (View Transitions API, con fallback).
+  const swap = async () => {
+    root.innerHTML = '';
+    const view = await render(ctx);
+    if (view && view.leave) current.leave = view.leave;
+  };
+  if (document.startViewTransition && document.body.dataset.animations !== 'off') {
+    try { await document.startViewTransition(swap).finished; } catch { /* la vista ya quedó montada */ }
+  } else {
+    await swap();
+  }
   // Tab highlight
   const tabRoute = name === 'studio-new' ? 'studio' : name;
   $$('.tab').forEach((tb) => tb.classList.toggle('active', tb.dataset.route === tabRoute));
-  // Studio y pantallas de entrada ocupan todo (sin barra de pestañas).
-  document.body.dataset.fullscreen = ['studio', 'studio-new', 'player', 'login', 'pairing', 'onboarding'].includes(name) ? '1' : '0';
+  // Studio, Home y pantallas de entrada ocupan todo (sin barra de pestañas).
+  document.body.dataset.fullscreen = ['home', 'studio', 'studio-new', 'player', 'login', 'pairing', 'onboarding'].includes(name) ? '1' : '0';
   bus.emit('route:change', name);
   try { history.replaceState({ route: name }, '', `?route=${name}`); } catch {}
   root.scrollTo?.(0, 0);

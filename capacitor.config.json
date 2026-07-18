@@ -1,0 +1,23 @@
+{
+  "appId": "com.dibujo.parejas",
+  "appName": "Dibujo",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#fbeef1"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 900,
+      "backgroundColor": "#fbeef1",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#fbeef1",
+      "overlaysWebView": true
+    }
+  }
+}

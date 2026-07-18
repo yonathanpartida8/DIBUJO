@@ -30,51 +30,51 @@ export async function renderSettings(ctx) {
   // Appearance
   view.append(section(t('set.appearance')));
   view.append(rows([
-    choiceRow('🎨', t('set.theme'), themeLabel(s.settings.theme), [['pastel', t('set.themePastel')], ['light', t('set.themeLight')], ['dark', t('set.themeDark')], ['auto', t('set.themeAuto')]], s.settings.theme, (v) => { store.set('settings', { theme: v }); applyTheme(); go('settings'); }),
-    choiceRow('🌐', t('set.language'), s.settings.language === 'es' ? 'Español' : 'English', [['es', 'Español'], ['en', 'English']], s.settings.language, (v) => { setLang(v); go('settings'); }),
-    choiceRow('🔠', t('set.uiSize'), uiLabel(s.settings.uiScale), [['s', 'Pequeño'], ['m', 'Mediano'], ['l', 'Grande'], ['xl', 'Muy grande']], s.settings.uiScale, (v) => { store.set('settings', { uiScale: v }); document.body.dataset.uiscale = v; }),
-    toggleRow('✨', t('set.animations'), s.settings.animations === 'on', (v) => { store.set('settings', { animations: v ? 'on' : 'off' }); document.body.dataset.animations = v ? 'on' : 'off'; }),
+    choiceRow('sun', t('set.theme'), themeLabel(s.settings.theme), [['pastel', t('set.themePastel')], ['light', t('set.themeLight')], ['dark', t('set.themeDark')], ['auto', t('set.themeAuto')]], s.settings.theme, (v) => { store.set('settings', { theme: v }); applyTheme(); go('settings'); }),
+    choiceRow('globe', t('set.language'), s.settings.language === 'es' ? 'Español' : 'English', [['es', 'Español'], ['en', 'English']], s.settings.language, (v) => { setLang(v); go('settings'); }),
+    choiceRow('textSize', t('set.uiSize'), uiLabel(s.settings.uiScale), [['s', 'Pequeño'], ['m', 'Mediano'], ['l', 'Grande'], ['xl', 'Muy grande']], s.settings.uiScale, (v) => { store.set('settings', { uiScale: v }); document.body.dataset.uiscale = v; }),
+    toggleRow('sparkle', t('set.animations'), s.settings.animations === 'on', (v) => { store.set('settings', { animations: v ? 'on' : 'off' }); document.body.dataset.animations = v ? 'on' : 'off'; }),
   ]));
 
   // Drawing / performance
   view.append(section('Dibujo & ' + t('set.performance')));
   view.append(rows([
-    choiceRow('💎', t('set.quality'), qualityLabel(s.settings.quality), [['low', 'Baja'], ['med', 'Media'], ['high', 'Alta']], s.settings.quality, (v) => store.set('settings', { quality: v })),
-    choiceRow('⚡', t('set.performance'), perfLabel(s.settings.performance), [['battery', 'Ahorro de batería'], ['balanced', 'Equilibrado'], ['smooth', 'Máxima fluidez']], s.settings.performance, (v) => store.set('settings', { performance: v })),
-    sliderRow('🖐️', t('studio.stabilizer'), s.settings.stabilizerDefault, (v) => store.set('settings', { stabilizerDefault: v })),
-    sliderRow('〰️', t('studio.smoothing'), s.settings.smoothingDefault, (v) => store.set('settings', { smoothingDefault: v })),
+    choiceRow('gem', t('set.quality'), qualityLabel(s.settings.quality), [['low', 'Baja'], ['med', 'Media'], ['high', 'Alta']], s.settings.quality, (v) => store.set('settings', { quality: v })),
+    choiceRow('zap', t('set.performance'), perfLabel(s.settings.performance), [['battery', 'Ahorro de batería'], ['balanced', 'Equilibrado'], ['smooth', 'Máxima fluidez']], s.settings.performance, (v) => store.set('settings', { performance: v })),
+    sliderRow('toolBrush', t('studio.stabilizer'), s.settings.stabilizerDefault, (v) => store.set('settings', { stabilizerDefault: v })),
+    sliderRow('line', t('studio.smoothing'), s.settings.smoothingDefault, (v) => store.set('settings', { smoothingDefault: v })),
   ]));
 
   // Feedback
   view.append(section('Sonido y vibración'));
   view.append(rows([
-    toggleRow('🔊', t('set.sounds'), s.settings.sounds === 'on', (v) => store.set('settings', { sounds: v ? 'on' : 'off' })),
-    toggleRow('✏️', 'Sonido al dibujar', s.settings.sndDraw === 'on', (v) => store.set('settings', { sndDraw: v ? 'on' : 'off' })),
-    toggleRow('🩹', 'Sonido al borrar', s.settings.sndErase === 'on', (v) => store.set('settings', { sndErase: v ? 'on' : 'off' })),
-    toggleRow('💬', 'Sonidos de mensajes', s.settings.sndMsg === 'on', (v) => store.set('settings', { sndMsg: v ? 'on' : 'off' })),
-    toggleRow('🗂️', 'Sonidos de paneles', s.settings.sndPanel === 'on', (v) => store.set('settings', { sndPanel: v ? 'on' : 'off' })),
-    toggleRow('🏆', 'Sonido de logros', s.settings.sndAchieve === 'on', (v) => store.set('settings', { sndAchieve: v ? 'on' : 'off' })),
-    toggleRow('💾', 'Sonido al guardar', s.settings.sndSave === 'on', (v) => store.set('settings', { sndSave: v ? 'on' : 'off' })),
-    toggleRow('📳', t('set.haptics'), s.settings.haptics === 'on', (v) => store.set('settings', { haptics: v ? 'on' : 'off' })),
-    toggleRow('🔔', t('set.notifications'), s.settings.notifications === 'on', async (v) => { store.set('settings', { notifications: v ? 'on' : 'off' }); if (v && 'Notification' in window) await Notification.requestPermission(); }),
+    toggleRow('volume', t('set.sounds'), s.settings.sounds === 'on', (v) => store.set('settings', { sounds: v ? 'on' : 'off' })),
+    toggleRow('toolPencil', 'Sonido al dibujar', s.settings.sndDraw === 'on', (v) => store.set('settings', { sndDraw: v ? 'on' : 'off' })),
+    toggleRow('toolEraser', 'Sonido al borrar', s.settings.sndErase === 'on', (v) => store.set('settings', { sndErase: v ? 'on' : 'off' })),
+    toggleRow('chat', 'Sonidos de mensajes', s.settings.sndMsg === 'on', (v) => store.set('settings', { sndMsg: v ? 'on' : 'off' })),
+    toggleRow('paper', 'Sonidos de paneles', s.settings.sndPanel === 'on', (v) => store.set('settings', { sndPanel: v ? 'on' : 'off' })),
+    toggleRow('sparkle', 'Sonido de logros', s.settings.sndAchieve === 'on', (v) => store.set('settings', { sndAchieve: v ? 'on' : 'off' })),
+    toggleRow('save', 'Sonido al guardar', s.settings.sndSave === 'on', (v) => store.set('settings', { sndSave: v ? 'on' : 'off' })),
+    toggleRow('vibrate', t('set.haptics'), s.settings.haptics === 'on', (v) => store.set('settings', { haptics: v ? 'on' : 'off' })),
+    toggleRow('bell', t('set.notifications'), s.settings.notifications === 'on', async (v) => { store.set('settings', { notifications: v ? 'on' : 'off' }); if (v && 'Notification' in window) await Notification.requestPermission(); }),
   ]));
 
   // Data / privacy / sync
   view.append(section(t('set.backup') + ' & ' + t('set.privacy')));
   view.append(rows([
-    toggleRow('☁️', t('set.sync'), s.settings.autoSync === 'on', (v) => store.set('settings', { autoSync: v ? 'on' : 'off' })),
-    toggleRow('💾', 'Copia automática', s.settings.autoBackup === 'on', (v) => store.set('settings', { autoBackup: v ? 'on' : 'off' })),
-    toggleRow('🔒', 'Bloqueo con código', s.settings.privacyLock === 'on', (v) => store.set('settings', { privacyLock: v ? 'on' : 'off' })),
-    tapRow('📤', t('set.export'), 'Descarga todos tus datos', exportData),
-    tapRow('📥', t('set.import'), 'Restaura desde un archivo', importData),
-    tapRow('📲', t('set.install'), 'Añade Dibujo a tu pantalla', promptInstall),
+    toggleRow('cloud', t('set.sync'), s.settings.autoSync === 'on', (v) => store.set('settings', { autoSync: v ? 'on' : 'off' })),
+    toggleRow('save', 'Copia automática', s.settings.autoBackup === 'on', (v) => store.set('settings', { autoBackup: v ? 'on' : 'off' })),
+    toggleRow('lock', 'Bloqueo con código', s.settings.privacyLock === 'on', (v) => store.set('settings', { privacyLock: v ? 'on' : 'off' })),
+    tapRow('upload', t('set.export'), 'Descarga todos tus datos', exportData),
+    tapRow('download', t('set.import'), 'Restaura desde un archivo', importData),
+    tapRow('smartphone', t('set.install'), 'Añade Dibujo a tu pantalla', promptInstall),
   ]));
 
   // About / reset
   view.append(section('Acerca de'));
   view.append(rows([
-    infoRow('💕', 'Dibujo', 'Un lienzo para dos · v1.0'),
-    tapRow('♻️', t('set.reset'), 'Borra todos los datos locales', resetAll),
+    infoRow('heart', 'Dibujo', 'Un lienzo para dos · v1.0'),
+    tapRow('refresh', t('set.reset'), 'Borra todos los datos locales', resetAll),
   ]));
 
   view.append(el('div', { style: { height: '20px' } }));
@@ -87,21 +87,29 @@ export async function renderSettings(ctx) {
 
 function section(title) { return el('div', { class: 'section-title', text: title }); }
 
+// Icono de fila: usa el set SVG; si el nombre no existe, muestra el texto tal cual.
+function ric(name) {
+  const svg = icon(name);
+  const d = el('div', { class: 'r-ic' });
+  if (svg) d.innerHTML = svg; else d.textContent = name;
+  return d;
+}
+
 // Filas de cuenta: Google, código de pareja y cierre de sesión.
 function accountRows(s) {
   const out = [];
   const acc = s.account;
   if (acc.mode === 'google') {
-    out.push(infoRow('☁️', 'Sesión con Google', acc.coupleId ? 'Vinculados — espacio privado activo 💞' : 'Sin pareja vinculada aún'));
-    if (!acc.coupleId) out.push(tapRow('💌', 'Invitar a mi pareja', 'Genera el código de vínculo', () => go('pairing')));
-    out.push(tapRow('🚪', 'Cerrar sesión', null, async () => {
+    out.push(infoRow('cloud', 'Sesión con Google', acc.coupleId ? 'Vinculados — espacio privado activo 💞' : 'Sin pareja vinculada aún'));
+    if (!acc.coupleId) out.push(tapRow('send', 'Invitar a mi pareja', 'Genera el código de vínculo', () => go('pairing')));
+    out.push(tapRow('logout', 'Cerrar sesión', null, async () => {
       const { fb } = await import('../core/firebase.js');
       await fb.signOut().catch(() => {});
       location.reload();
     }));
   } else {
-    out.push(infoRow('📱', 'Modo local', 'Tus datos viven solo en este dispositivo'));
-    out.push(tapRow('☁️', 'Iniciar sesión con Google', 'Activa la sincronización en tiempo real', async () => {
+    out.push(infoRow('smartphone', 'Modo local', 'Tus datos viven solo en este dispositivo'));
+    out.push(tapRow('cloud', 'Iniciar sesión con Google', 'Activa la sincronización en tiempo real', async () => {
       const { fb } = await import('../core/firebase.js');
       try { const user = await fb.signInWithGoogle(); if (user) { toast('Sesión iniciada ✓'); go('pairing'); } }
       catch { toast('No se pudo iniciar sesión'); }
@@ -112,27 +120,27 @@ function accountRows(s) {
 function rows(children) { return el('div', { class: 'rows' }, children); }
 function toggleRow(emoji, title, checked, onChange) {
   const input = el('input', { type: 'checkbox' }); input.checked = checked; input.onchange = () => onChange(input.checked);
-  return el('div', { class: 'row' }, [el('div', { class: 'r-ic', text: emoji }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title })]), el('label', { class: 'switch' }, [input, el('span', { class: 'track' })])]);
+  return el('div', { class: 'row' }, [ric(emoji), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title })]), el('label', { class: 'switch' }, [input, el('span', { class: 'track' })])]);
 }
 function tapRow(emoji, title, sub, fn) {
-  return el('div', { class: 'row tappable', onclick: fn }, [el('div', { class: 'r-ic', text: emoji }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title }), sub ? el('div', { class: 'r-sub', text: sub }) : null]), el('div', { class: 'r-val', text: '›' })]);
+  return el('div', { class: 'row tappable', onclick: fn }, [ric(emoji), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title }), sub ? el('div', { class: 'r-sub', text: sub }) : null]), el('div', { class: 'r-val', text: '›' })]);
 }
 function infoRow(emoji, title, sub) {
-  return el('div', { class: 'row' }, [el('div', { class: 'r-ic', text: emoji }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title }), el('div', { class: 'r-sub', text: sub })])]);
+  return el('div', { class: 'row' }, [ric(emoji), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title }), el('div', { class: 'r-sub', text: sub })])]);
 }
 function choiceRow(emoji, title, valLabel, options, current, onChange) {
   const row = el('div', { class: 'row tappable', onclick: () => {
     const body = el('div');
     const sh = sheet(title, body);
     options.forEach(([v, label]) => body.append(el('button', { class: 'row tappable', style: { width: '100%' }, onclick: () => { onChange(v); sh.close(); } }, [el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: label })]), v === current ? el('span', { class: 'pill warm', text: '✓' }) : null])));
-  } }, [el('div', { class: 'r-ic', text: emoji }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title })]), el('div', { class: 'r-val', text: valLabel + ' ›' })]);
+  } }, [ric(emoji), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title })]), el('div', { class: 'r-val', text: valLabel + ' ›' })]);
   return row;
 }
 function sliderRow(emoji, title, value, onChange) {
   const val = el('div', { class: 'r-val', text: value + '%' });
   const sl = el('input', { class: 'slider', type: 'range', min: 0, max: 100, value, style: { flex: 1 } });
   sl.oninput = () => { val.textContent = sl.value + '%'; onChange(+sl.value); };
-  return el('div', { class: 'row' }, [el('div', { class: 'r-ic', text: emoji }), el('div', { class: 'r-main', style: { display: 'flex', alignItems: 'center', gap: '10px' } }, [el('span', { style: { fontSize: '0.9rem', minWidth: '90px' }, text: title }), sl]), val]);
+  return el('div', { class: 'row' }, [ric(emoji), el('div', { class: 'r-main', style: { display: 'flex', alignItems: 'center', gap: '10px' } }, [el('span', { style: { fontSize: '0.9rem', minWidth: '90px' }, text: title }), sl]), val]);
 }
 
 function profileCard(p, who) {

@@ -20,6 +20,15 @@ import { fb } from '../core/firebase.js';
 
 let engine, recorder, current, saveTimer, autosaveOff, ruler;
 
+// Icono SVG por herramienta (la UI no usa emojis).
+const TOOL_ICON = {
+  pencil: 'toolPencil', pen: 'toolPen', ballpoint: 'toolCallig', marker: 'toolMarker',
+  brush: 'toolBrush', watercolor: 'toolWater', airbrush: 'toolSpray', chalk: 'toolMarker',
+  charcoal: 'toolPencil', crayon: 'toolMarker', pixel: 'toolPixel', calligraphy: 'toolCallig',
+  eraser: 'toolEraser', eraserSoft: 'toolEraser', eraserPixel: 'toolPixel',
+};
+
+
 export async function renderStudio(ctx) {
   engine = new Engine();
   recorder = new Recorder();
@@ -33,9 +42,8 @@ export async function renderStudio(ctx) {
   // Top bar
   const top = buildTopBar();
   const stage = el('div', { class: 'st-stage' });
-  const rail = buildRail();
   const dock = buildDock();
-  wrap.append(top, stage, rail, dock);
+  wrap.append(top, stage, dock);
 
   engine.mount(stage);
   ruler = new RulerTool(engine);
@@ -104,24 +112,34 @@ export async function renderStudio(ctx) {
     return bar;
   }
 
-  function buildRail() {
-    const r = el('div', { class: 'st-rail' });
-    const primary = [
-      ['pen', 'pen'], ['pencil', 'pen'], ['brush', 'pen'], ['marker', 'pen'],
-      ['eraser', 'eraser'], ['bucket', 'bucket'], ['eyedropper', 'dropper'],
-      ['line', 'line'], ['shapes', 'shapes'], ['symmetry', 'symmetry'],
-      ['ruler-tool', 'ruler'], ['pencil-sim', 'transform'], ['more-tools', 'more'],
+  // Barra horizontal de herramientas — fuera del lienzo, desplazable,
+  // con ilustraciones de herramienta y rueda de color al final.
+  function buildToolbar() {
+    const bar = el('div', { class: 'st-toolbar' });
+    const tools = [
+      ['pencil', 'toolPencil'], ['pen', 'toolPen'], ['ballpoint', 'toolCallig'], ['marker', 'toolMarker'],
+      ['brush', 'toolBrush'], ['watercolor', 'toolWater'], ['airbrush', 'toolSpray'], ['pixel', 'toolPixel'],
+      ['sep'],
+      ['bucket', 'toolBucket'], ['eyedropper', 'dropper'], ['eraser', 'toolEraser'],
+      ['sep'],
+      ['line', 'line'], ['shapes', 'toolShapes'], ['symmetry', 'symmetry'],
+      ['ruler-tool', 'ruler'], ['pencil-sim', 'toolPencil'], ['more-tools', 'more'],
     ];
-    for (const [tool, ic] of primary) {
-      const b = el('button', { class: 'st-tool', dataset: { tool }, html: icon(ic), title: BRUSHES[tool]?.name || tool });
+    for (const [tool, ic] of tools) {
+      if (tool === 'sep') { bar.append(el('i', { class: 'st-sep' })); continue; }
+      const b = el('button', { class: 'st-tool', dataset: { tool }, html: icon(ic), title: BRUSHES[tool]?.name || tool, 'aria-label': BRUSHES[tool]?.name || tool });
       b.onclick = () => onToolButton(tool, b);
-      r.append(b);
+      bar.append(b);
     }
-    return r;
+    // Rueda de color fija al final (anillo cromático + color actual).
+    const wheelBtn = el('button', { class: 'st-wheel-btn', id: 'st-wheel-btn', 'aria-label': t('studio.color'), onclick: openColorWheel }, [el('i', { class: 'st-wheel-core', id: 'st-wheel-core' })]);
+    bar.append(el('i', { class: 'st-sep' }), wheelBtn);
+    return bar;
   }
 
   function buildDock() {
     const d = el('div', { class: 'st-dock' });
+    const toolbar = buildToolbar();
     const quick = el('div', { class: 'st-quick' });
     const swatch = el('button', { class: 'st-color-swatch', id: 'st-swatch', onclick: openColorWheel });
     const sizePrev = el('div', { class: 'st-size-preview', onclick: openBrushOptions }, [el('i', { id: 'st-sizedot' })]);
@@ -144,7 +162,7 @@ export async function renderStudio(ctx) {
       mk('save', () => doSave(true).then(() => toast(t('toast.saved'), { icon: '💕' })), t('common.save')),
     );
 
-    d.append(quick, palette, actions);
+    d.append(toolbar, quick, palette, actions);
     setTimeout(refreshPalette, 0);
     // zoom fit pill
     const pill = el('button', { class: 'icon-btn zoom-pill', html: icon('fit'), onclick: () => engine.resetView() });
@@ -216,14 +234,14 @@ function onToolButton(tool, btn) {
   if (tool === 'shapes') return openShapes();
   if (tool === 'symmetry') return openSymmetry();
   if (tool === 'more-tools') return openMoreTools();
-  if (tool === 'ruler-tool') { const on = ruler.toggle(); btn.classList.toggle('active', on); toast(on ? '📏 Regla activa — barrera física' : 'Regla desactivada'); return; }
-  if (tool === 'pencil-sim') { engine.pencilMode = !engine.pencilMode; btn.classList.toggle('active', engine.pencilMode); toast(engine.pencilMode ? '✏️ Simular Pincel Virtual activado' : 'Pincel virtual desactivado'); return; }
+  if (tool === 'ruler-tool') { const on = ruler.toggle(); btn.classList.toggle('active', on); toast(on ? 'Regla activa — barrera física' : 'Regla desactivada'); return; }
+  if (tool === 'pencil-sim') { engine.pencilMode = !engine.pencilMode; btn.classList.toggle('active', engine.pencilMode); toast(engine.pencilMode ? 'Simular Pincel Virtual activado' : 'Pincel virtual desactivado'); return; }
   engine.setTool(tool);
   refreshToolUI();
 }
 
 function refreshToolUI() {
-  $('.st-rail')?.querySelectorAll('.st-tool').forEach((b) => {
+  $('.st-toolbar')?.querySelectorAll('.st-tool').forEach((b) => {
     // Los conmutadores (regla / lápiz virtual) conservan su propio estado.
     if (b.dataset.tool === 'ruler-tool') { b.classList.toggle('active', !!ruler?.active); return; }
     if (b.dataset.tool === 'pencil-sim') { b.classList.toggle('active', !!engine.pencilMode); return; }
@@ -231,6 +249,7 @@ function refreshToolUI() {
   });
   const sl = $('#st-size'); if (sl) sl.value = engine.brushSize;
   updateSizeDot();
+  const core = $('#st-wheel-core'); if (core) core.style.background = engine.color;
 }
 function updateSizeDot() {
   const dot = $('#st-sizedot'); if (!dot) return;
@@ -239,6 +258,7 @@ function updateSizeDot() {
 }
 function refreshColorUI() {
   const sw = $('#st-swatch'); if (sw) sw.style.background = engine.color;
+  const core = $('#st-wheel-core'); if (core) core.style.background = engine.color;
   updateSizeDot();
 }
 function refreshPalette() {
@@ -293,7 +313,7 @@ function openBrushPicker() {
     const grid = el('div', { class: 'grid-auto' });
     items.forEach((b) => {
       const card = el('button', { class: 'tile', style: { padding: '14px', textAlign: 'center' }, onclick: () => { engine.setTool(b.id); refreshToolUI(); s.close(); } });
-      card.append(el('div', { style: { fontSize: '1.8rem' }, text: b.emoji }), el('div', { class: 'meta', html: `<div class="t">${b.name}</div>` }));
+      card.append(el('div', { class: 'attach-ic', style: { margin: '0 auto' }, html: icon(TOOL_ICON[b.id] || 'pen') }), el('div', { class: 'meta', html: `<div class="t">${b.name}</div>` }));
       if (b.id === engine.tool) card.style.outline = '2px solid var(--primary)';
       grid.append(card);
     });
@@ -354,7 +374,7 @@ function openShapes() {
   const s = sheet(t('studio.shapes') || 'Figuras', body);
   shapes.forEach(([id, name]) => {
     const b = el('button', { class: 'tile', style: { padding: '16px', textAlign: 'center' }, onclick: () => { engine.setTool(id); refreshToolUI(); s.close(); } }, [
-      el('div', { style: { fontSize: '1.6rem' }, text: { line: '📏', rect: '▭', ellipse: '⬭', triangle: '△', star: '★', polygon: '⬡' }[id] }),
+      el('div', { style: { fontSize: '1.6rem' }, text: { line: '╱', rect: '▭', ellipse: '◯', triangle: '△', star: '✦', polygon: '⬡' }[id] }),
       el('div', { class: 'meta', html: `<div class="t">${name}</div>` }),
     ]);
     body.append(b);
@@ -379,25 +399,25 @@ function openSymmetry() {
 function openMoreTools() {
   const body = el('div');
   const tools = [
-    ['ruler', 'Regla / línea recta', '📏', () => engine.setTool('line')],
-    ['transform', 'Transformar capa', '🔄', openTransform],
-    ['select', 'Selección (mover)', '⬚', () => { engine.setTool('select'); toast('Arrastra para seleccionar y mover'); }],
-    ['compass', 'Compás (círculo)', '⭕', () => engine.setTool('ellipse')],
-    ['protractor', 'Transportador', '📐', () => toast('Usa la regla con la cuadrícula activada')],
-    ['pixel', 'Pixel brush', '🟪', () => engine.setTool('pixel')],
-    ['calligraphy', 'Caligrafía', '✒️', () => engine.setTool('calligraphy')],
-    ['crayon', 'Crayón', '🖍️', () => engine.setTool('crayon')],
-    ['chalk', 'Tiza', '🧴', () => engine.setTool('chalk')],
-    ['charcoal', 'Carboncillo', '⚫', () => engine.setTool('charcoal')],
-    ['airbrush', 'Aerógrafo', '💨', () => engine.setTool('airbrush')],
-    ['watercolor', 'Acuarela', '💧', () => engine.setTool('watercolor')],
-    ['ballpoint', 'Bolígrafo', '🖊️', () => engine.setTool('ballpoint')],
-    ['eraserSoft', 'Borrador suave', '☁️', () => engine.setTool('eraserSoft')],
-    ['eraserPixel', 'Borrador píxel', '🧩', () => engine.setTool('eraserPixel')],
+    ['ruler', 'Regla / línea recta', 'ruler', () => engine.setTool('line')],
+    ['transform', 'Transformar capa', 'transform', openTransform],
+    ['select', 'Selección (mover)', 'select', () => { engine.setTool('select'); toast('Arrastra para seleccionar y mover'); }],
+    ['compass', 'Compás (círculo)', 'toolShapes', () => engine.setTool('ellipse')],
+    ['protractor', 'Transportador', 'ruler', () => toast('Usa la regla con la cuadrícula activada')],
+    ['pixel', 'Pixel brush', 'toolPixel', () => engine.setTool('pixel')],
+    ['calligraphy', 'Caligrafía', 'toolCallig', () => engine.setTool('calligraphy')],
+    ['crayon', 'Crayón', 'toolMarker', () => engine.setTool('crayon')],
+    ['chalk', 'Tiza', 'toolMarker', () => engine.setTool('chalk')],
+    ['charcoal', 'Carboncillo', 'toolPencil', () => engine.setTool('charcoal')],
+    ['airbrush', 'Aerógrafo', 'toolSpray', () => engine.setTool('airbrush')],
+    ['watercolor', 'Acuarela', 'toolWater', () => engine.setTool('watercolor')],
+    ['ballpoint', 'Bolígrafo', 'toolPen', () => engine.setTool('ballpoint')],
+    ['eraserSoft', 'Borrador suave', 'toolEraser', () => engine.setTool('eraserSoft')],
+    ['eraserPixel', 'Borrador píxel', 'toolPixel', () => engine.setTool('eraserPixel')],
   ];
   const grid = el('div', { class: 'grid-auto' });
   const s = sheet('Herramientas', body);
-  tools.forEach(([id, name, emoji, fn]) => grid.append(el('button', { class: 'tile', style: { padding: '14px', textAlign: 'center' }, onclick: () => { fn(); refreshToolUI(); s.close(); } }, [el('div', { style: { fontSize: '1.5rem' }, text: emoji }), el('div', { class: 'meta', html: `<div class="t">${name}</div>` })])));
+  tools.forEach(([id, name, ic, fn]) => grid.append(el('button', { class: 'tile', style: { padding: '14px', textAlign: 'center' }, onclick: () => { fn(); refreshToolUI(); s.close(); } }, [el('div', { class: 'attach-ic', style: { margin: '0 auto' }, html: icon(ic) }), el('div', { class: 'meta', html: `<div class="t">${name}</div>` })])));
   body.append(grid);
 }
 
@@ -612,7 +632,7 @@ async function openAssetsPanel() {
     }
     if (a.kind === 'template') {
       const ok = recorder.isEmpty || confirm('¿Crear un lienzo nuevo con esta plantilla?');
-      if (ok) { engine.newDoc({ w: a.w, h: a.h }); recorder.reset(); toast('📐 ' + a.name); }
+      if (ok) { engine.newDoc({ w: a.w, h: a.h }); recorder.reset(); toast(a.name); }
       return;
     }
   } });
@@ -649,7 +669,8 @@ function openMenu() {
   body.append(
     item('pen', t('common.rename'), async () => { const n = await promptDialog({ title: t('common.rename'), value: $('#st-title').textContent }); if (n) { $('#st-title').textContent = n; if (current) { current.title = n; } engine.markDirty(); doSave(true); } }),
     item('share', t('common.share'), shareDrawing),
-    item('send', 'Enviar a mi pareja', sendToPartner),
+    item('send', 'Enviar a mi pareja', () => sendToPartner(false)),
+    item('secret', 'Enviar como secreto', () => sendToPartner(true)),
     item('image', t('studio.export'), () => { downloadDataURL(engine.flatten().toDataURL('image/png'), (current?.title || 'dibujo') + '.png'); toast(t('toast.exported')); }),
     item('dup', t('common.duplicate'), duplicateDrawing),
     item('trash', t('studio.clear'), async () => { if (await confirmDialog({ title: t('studio.clear'), message: '¿Vaciar el lienzo actual?', danger: true })) { engine.stack.active.clear(); engine.requestComposite(); engine.markDirty(); toast(t('toast.cleared')); } }),
@@ -663,14 +684,11 @@ async function shareDrawing() {
   }
   downloadDataURL(url, 'dibujo.png'); toast('Imagen lista para compartir');
 }
-async function sendToPartner() {
+async function sendToPartner(secret = false) {
   await doSave(true);
-  const msg = { id: uid('msg'), ts: Date.now(), from: 'me', type: 'drawing', drawingId: current.id, thumb: current.thumb, text: '', state: 'sent' };
-  await db.put('messages', msg);
-  sync.send('message', { ...msg, from: 'them' });
-  // Además, publica el dibujo completo en el espacio privado (Firebase).
-  fb.shareDrawing?.(current).catch(() => {});
-  toast(t('toast.sent'), { icon: '💌' }); sound('send');
+  const { sendDrawingToPartner } = await import('./chat.js');
+  await sendDrawingToPartner(current, { secret });
+  toast(secret ? 'Enviado en secreto' : t('toast.sent')); sound('send');
 }
 async function duplicateDrawing() {
   await doSave(true);

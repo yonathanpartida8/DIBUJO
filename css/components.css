@@ -415,3 +415,99 @@
 
 /* Assets */
 .asset-fav { position: absolute; top: 4px; right: 4px; font-size: 0.9rem; background: var(--glass); border-radius: 50%; width: 26px; height: 26px; }
+
+/* ============================================================
+   v3 — Inbox (feed vertical con identidad rosa/verde)
+   ============================================================ */
+.inbox-feed { display: flex; flex-direction: column; gap: 20px; margin-top: 12px; padding-bottom: 8px; }
+.inbox-card {
+  background: var(--surface); border-radius: 26px; overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 8px rgba(120,90,110,0.05), 0 16px 40px rgba(120,90,110,0.1);
+  animation: cardRise 0.6s var(--ease-soft) backwards;
+  transition: transform var(--dur-2) var(--ease-soft);
+}
+body[data-theme="dark"] .inbox-card { box-shadow: 0 3px 8px rgba(0,0,0,0.25), 0 16px 40px rgba(0,0,0,0.35); }
+.inbox-card:active { transform: scale(0.98); }
+@keyframes cardRise { from { opacity: 0; transform: translateY(26px) scale(0.97); } }
+.ic-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 10px; }
+.ic-author { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.85rem; }
+.ic-dot { width: 10px; height: 10px; border-radius: 50%; }
+.from-her .ic-author { color: var(--her-ink); }
+.from-her .ic-dot { background: var(--her); box-shadow: 0 0 0 3px var(--her-soft); }
+.from-me .ic-author { color: var(--mine-ink); }
+.from-me .ic-dot { background: var(--mine); box-shadow: 0 0 0 3px var(--mine-soft); }
+.ic-date { color: var(--text-3); font-size: 0.72rem; font-weight: 600; }
+.ic-media { position: relative; aspect-ratio: 4/3.4; background: var(--surface-3); overflow: hidden; }
+.from-her .ic-media { background: var(--her-soft); }
+.from-me .ic-media { background: var(--mine-soft); }
+.ic-media img { width: 100%; height: 100%; object-fit: cover; }
+.ic-foot { display: flex; align-items: center; gap: 10px; padding: 12px 14px 14px; }
+.from-her .ic-foot { box-shadow: inset 0 3px 0 -1.5px var(--her-soft); }
+.from-me .ic-foot { box-shadow: inset 0 3px 0 -1.5px var(--mine-soft); }
+.ic-info { flex: 1; min-width: 0; }
+.ic-title { font-weight: 800; font-size: 0.98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ic-rx { font-size: 0.78rem; margin-top: 2px; color: var(--text-2); }
+.ic-actions { display: flex; gap: 6px; }
+.ic-act {
+  width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center;
+  background: var(--surface-2); border: 1px solid var(--line);
+  transition: transform var(--dur-1) var(--ease), background var(--dur-2) var(--ease);
+}
+.ic-act svg { width: 19px; height: 19px; fill: var(--text-2); }
+.ic-act:active { transform: scale(0.86); }
+.ic-act.fav { background: var(--her-soft); border-color: transparent; }
+.ic-act.fav svg { fill: var(--her); }
+.empty-icon { width: 64px; height: 64px; border-radius: 22px; background: var(--surface-3); display: grid; place-items: center; }
+.empty-icon svg { width: 30px; height: 30px; fill: var(--text-3); }
+
+/* Velo de dibujo secreto */
+.ic-secret, .msg-secret {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--her-soft) 88%, #fff), color-mix(in srgb, var(--accent-soft) 88%, #fff));
+  backdrop-filter: blur(10px);
+}
+.msg-secret { position: relative; width: 200px; height: 150px; border-radius: var(--r-md); overflow: hidden; }
+.ic-secret-icon svg, .ms-icon svg { width: 36px; height: 36px; stroke: var(--her-ink); }
+.ic-secret-t, .ms-t { font-weight: 800; color: var(--her-ink); }
+.ic-secret-s, .ms-s { font-size: 0.78rem; color: var(--text-2); }
+.ic-secret::after, .msg-secret::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -50%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,0.5), transparent);
+  transform: skewX(-16deg); animation: shineLoop 2.6s var(--ease) infinite;
+}
+@keyframes shineLoop { 60%, 100% { left: 130%; } }
+
+/* Adjuntos del chat con iconos */
+.attach-tile { padding: 18px 12px; text-align: center; }
+.attach-ic { width: 46px; height: 46px; margin: 0 auto; border-radius: 16px; background: var(--surface-3); display: grid; place-items: center; }
+.attach-ic svg { width: 24px; height: 24px; fill: var(--text-2); stroke: var(--text-2); }
+
+/* Login: icono grande y opciones con SVG */
+.login-big-icon { display: grid; place-items: center; }
+.login-big-icon svg { width: 56px; height: 56px; }
+.lbi-accent svg { stroke: var(--primary); fill: none; }
+.lo-emoji { width: 46px; height: 46px; border-radius: 16px; background: var(--surface-3); display: grid; place-items: center; flex: none; }
+.lo-emoji svg { width: 24px; height: 24px; stroke: var(--text-2); fill: none; }
+
+/* Reproductor: modos e iconos */
+.vinyl-modes { margin-bottom: 4px; }
+.vinyl-card[data-mode="cover"] .vinyl-disc { background: none; box-shadow: var(--shadow-lg); border-radius: 22px; }
+.vinyl-card[data-mode="cover"] .vinyl-grooves, .vinyl-card[data-mode="cover"] .vinyl-label { display: none; }
+.vinyl-card[data-mode="cover"] .vinyl-disc.spin { animation: none; }
+.vinyl-card[data-mode="cover"] .vinyl-cover { position: static; }
+.vinyl-card[data-mode="cover"] .vinyl-cover img { width: 190px; height: 190px; border-radius: 22px; }
+.vinyl-card[data-mode="minimal"] .vinyl-disc, .vinyl-card[data-mode="minimal"] .vinyl-eq, .vinyl-card[data-mode="minimal"] .vinyl-cover { display: none; }
+.vinyl-card[data-mode="minimal"] { gap: 6px; }
+.vinyl-play svg { width: 26px; height: 26px; fill: #fff; }
+.vinyl-vol-ic svg { width: 18px; height: 18px; stroke: var(--text-2); fill: none; }
+.vm-disc { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle, var(--surface) 22%, #3a3244 24%, #2c2734 70%); border: 1.5px solid var(--line); }
+.vm-btn svg { width: 16px; height: 16px; fill: var(--text-2); stroke: var(--text-2); }
+
+/* Chat: identidad y pulido */
+.bubble.me { background: linear-gradient(135deg, color-mix(in srgb, var(--mine) 72%, #fff), var(--mine)); color: #2f4b3c; }
+.bubble.me .time { color: rgba(47,75,60,0.65); }
+.bubble.them { border-left: 3px solid var(--her-soft); }
+.chat-scroll { gap: 10px; }
+.bubble { line-height: 1.5; letter-spacing: 0.1px; }
