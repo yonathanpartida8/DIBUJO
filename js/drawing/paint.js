@@ -46,8 +46,9 @@ export class StrokePainter {
   }
   _radius(p) {
     const base = (this.op.size || 4) / 2;
-    // pressure influence (device pressure captured per point; falls back to 1)
-    const pr = this.op.pressure === false ? 1 : (0.32 + 0.68 * (p ?? 1));
+    // Influencia de la presión (algunas puntas — marcador, plumilla — son planas).
+    if (this.brush.noPressure || this.op.pressure === false) return Math.max(0.4, base);
+    const pr = 0.32 + 0.68 * (p ?? 1);
     return Math.max(0.4, base * pr);
   }
   _stampAt(ctx, x, y, p) {

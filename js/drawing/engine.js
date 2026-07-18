@@ -172,11 +172,16 @@ export class Engine {
   _bindInput() {
     const s = this.stage;
     s.style.touchAction = 'none';
-    s.addEventListener('pointerdown', (e) => this._onDown(e));
+    s.addEventListener('pointerdown', (e) => {
+      // Captura del puntero: el trazo no se corta aunque el dedo roce el borde
+      // de la pantalla o salga momentáneamente del área del lienzo.
+      try { s.setPointerCapture(e.pointerId); } catch {}
+      this._onDown(e);
+    });
     s.addEventListener('pointermove', (e) => this._onMove(e));
     s.addEventListener('pointerup', (e) => this._onUp(e));
     s.addEventListener('pointercancel', (e) => this._onUp(e));
-    s.addEventListener('pointerleave', (e) => this._onUp(e));
+    // NOTA: sin 'pointerleave' — con pointer capture provocaba cortes falsos.
   }
   _pressure(e) {
     if (!this.pressureEnabled) return 1;
@@ -198,6 +203,16 @@ export class Engine {
     if (this.tool === 'bucket') return this._doFill(pt);
     if (this.tool === 'eyedropper') return this._doPick(pt);
     if (['line', 'rect', 'ellipse', 'triangle', 'star', 'polygon'].includes(this.tool)) { this._shapeStart = pt; return; }
+    // Regla activa: como una regla real — el trazo se proyecta sobre su
+    // dirección y sale perfectamente recto con CUALQUIER pincel o borrador.
+    if (this.ruler) {
+      const dirX = Math.cos(this.ruler.angle), dirY = Math.sin(this.ruler.angle);
+      const nX = -dirY, nY = dirX;
+      const off = (pt.x - this.ruler.px) * nX + (pt.y - this.ruler.py) * nY;
+      this._rulerLock = { px: this.ruler.px, py: this.ruler.py, dirX, dirY, nX, nY, off };
+      Object.assign(pt, this._projectRuler(pt));
+    } else this._rulerLock = null;
+
     // Brush stroke
     this._beforeSnapshot = layer.snapshot();
     this._smoothPt = { x: pt.x, y: pt.y, p: pt.p };
@@ -207,8 +222,6 @@ export class Engine {
       flow: this.flow, hardness: this.hardness, blend: this.stack.active.blend, seed,
       pressure: this.pressureEnabled, layerId: layer.id,
       sym: this.symmetry.mode === 'none' ? null : { mode: this.symmetry.mode, count: this.symmetry.count, ax: this.docW / 2, ay: this.docH / 2 },
-      // Regla activa: el trazo queda confinado al lado donde comenzó.
-      ruler: this.ruler ? { ...this.ruler, side: this._rulerSide(pt) } : null,
     };
     this._painter = new StrokePainter(this._op, this.docW, this.docH);
     this._painter.addPoint(this._smoothPt, layer.ctx);
@@ -238,9 +251,11 @@ export class Engine {
         y: this._smoothPt.y + (raw.y - this._smoothPt.y) * k,
         p,
       };
+      // Con regla activa el punto se proyecta a la línea → recta perfecta.
+      const drawPt = this._rulerLock ? this._projectRuler(this._smoothPt) : this._smoothPt;
       // Incremental: paint the new segment into the stroke buffer (O(1) per point).
-      this._painter.addPoint(this._smoothPt, layer.ctx);
-      this.recorder?.addPoint(this._smoothPt.x, this._smoothPt.y, this._smoothPt.p);
+      this._painter.addPoint(drawPt, layer.ctx);
+      this.recorder?.addPoint(drawPt.x, drawPt.y, drawPt.p);
     }
     // For buffered (non-erase) brushes, show the growing stroke at uniform opacity.
     if (!this._painter.erase) {
@@ -268,36 +283,55 @@ export class Engine {
     bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: false });
     import('../core/sounds.js').then((m) => m.stopScratch());
   }
-  // ¿De qué lado de la regla comenzó el trazo? (+1 | -1)
-  _rulerSide(pt) {
-    const r = this.ruler;
-    const nx = -Math.sin(r.angle), ny = Math.cos(r.angle);
-    const d = (pt.x - r.px) * nx + (pt.y - r.py) * ny;
-    return d >= 0 ? 1 : -1;
+  // Proyecta un punto sobre la línea de la regla, conservando la distancia
+  // perpendicular con la que empezó el trazo (líneas paralelas perfectas).
+  _projectRuler(pt) {
+    const rl = this._rulerLock; if (!rl) return pt;
+    const t = (pt.x - rl.px) * rl.dirX + (pt.y - rl.py) * rl.dirY;
+    return { x: rl.px + rl.dirX * t + rl.nX * rl.off, y: rl.py + rl.dirY * t + rl.nY * rl.off, p: pt.p };
   }
+  // Aborta un trazo sin dejar rastro: ni píxeles, ni historial, ni tiempo
+  // grabado (se usa cuando el segundo dedo convierte el toque en gesto).
   _endStrokeAbort() {
     if (this._drawing && this._painter) {
       const layer = this.stack.active;
       if (this._beforeSnapshot) layer.restore(this._beforeSnapshot);
-      this.recorder?.endStroke(); // keep partial? better discard
-      this._drawing = false; this._painter = null; this.requestComposite();
+      this.recorder?.cancelStroke();
+      this._drawing = false; this._painter = null; this._op = null; this._rulerLock = null;
+      import('../core/sounds.js').then((m) => m.stopScratch());
+      this.requestComposite();
     }
   }
 
-  // ---------- Gestures (pinch zoom / pan) ----------
+  // ---------- Gestos (pellizco = zoom + pan SOLO del lienzo) ----------
+  // El zoom se ancla al punto medio del pellizco: el punto del dibujo que
+  // está bajo los dedos permanece bajo los dedos. La interfaz no se escala.
   _startGesture() {
     const pts = [...this._pointers.values()];
-    return { d0: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), z0: this.zoom, c0: this._mid(pts), pan0: { x: this.panX, y: this.panY } };
+    const rect = this.stage.getBoundingClientRect();
+    const c0 = this._mid(pts);
+    const s0 = this.baseScale * this.zoom;
+    const ox = (this.stage.clientWidth - this.docW * s0) / 2 + this.panX;
+    const oy = (this.stage.clientHeight - this.docH * s0) / 2 + this.panY;
+    return {
+      d0: Math.max(8, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)),
+      z0: this.zoom,
+      rect,
+      // punto del documento bajo el centro del pellizco
+      anchor: { x: (c0.x - rect.left - ox) / s0, y: (c0.y - rect.top - oy) / s0 },
+    };
   }
   _mid(pts) { return { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }; }
   _updateGesture() {
     const pts = [...this._pointers.values()];
-    if (pts.length < 2) return;
+    if (pts.length < 2 || !this._gesture) return;
+    const g = this._gesture;
     const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
     const c = this._mid(pts);
-    this.zoom = clamp(this._gesture.z0 * (d / this._gesture.d0), 0.2, 8);
-    this.panX = this._gesture.pan0.x + (c.x - this._gesture.c0.x);
-    this.panY = this._gesture.pan0.y + (c.y - this._gesture.c0.y);
+    this.zoom = clamp(g.z0 * (d / g.d0), 0.2, 8);
+    const s = this.baseScale * this.zoom;
+    this.panX = (c.x - g.rect.left) - g.anchor.x * s - (this.stage.clientWidth - this.docW * s) / 2;
+    this.panY = (c.y - g.rect.top) - g.anchor.y * s - (this.stage.clientHeight - this.docH * s) / 2;
     this._applyTransform();
   }
   setZoom(z) { this.zoom = clamp(z, 0.2, 8); this._applyTransform(); }

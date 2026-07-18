@@ -24,9 +24,17 @@ export class Recorder {
 
   beginStroke(meta) {
     this._cur = { op: 'stroke', at: this.activeMs, ...meta, pts: [] };
+    this._curAcc = 0; // tiempo acumulado de este trazo (para poder cancelarlo)
     this._lastT = performance.now();
     this.tools.add(meta.tool);
     this.colors.add(meta.color);
+  }
+  // Cancela el trazo en curso sin dejar rastro (p. ej. al iniciar un gesto
+  // de dos dedos): ni puntos ni tiempo activo.
+  cancelStroke() {
+    if (!this._cur) return;
+    this.activeMs -= this._curAcc || 0;
+    this._cur = null; this._curAcc = 0;
   }
   addPoint(x, y, p) {
     if (!this._cur) return;
@@ -35,6 +43,7 @@ export class Recorder {
     // cap per-point dt so pauses (holding still) don't inflate active time
     dt = Math.min(dt, 180);
     this.activeMs += dt;
+    this._curAcc = (this._curAcc || 0) + dt;
     this._lastT = now;
     this._cur.pts.push([Math.round(x * 100) / 100, Math.round(y * 100) / 100, Math.round((p ?? 1) * 100) / 100, Math.round(dt)]);
   }

@@ -22,11 +22,26 @@ let engine, recorder, current, saveTimer, autosaveOff, ruler;
 
 // Icono SVG por herramienta (la UI no usa emojis).
 const TOOL_ICON = {
-  pencil: 'toolPencil', pen: 'toolPen', ballpoint: 'toolCallig', marker: 'toolMarker',
-  brush: 'toolBrush', watercolor: 'toolWater', airbrush: 'toolSpray', chalk: 'toolMarker',
-  charcoal: 'toolPencil', crayon: 'toolMarker', pixel: 'toolPixel', calligraphy: 'toolCallig',
-  eraser: 'toolEraser', eraserSoft: 'toolEraser', eraserPixel: 'toolPixel',
+  pencil: 'toolPencil', pen: 'toolPen', ballpoint: 'toolPen', marker: 'toolMarker',
+  brush: 'toolBrush', watercolor: 'toolWater', airbrush: 'toolSpray', splatter: 'toolSpray',
+  chalk: 'toolMarker', charcoal: 'toolPencil', crayon: 'toolMarker', pixel: 'toolPixel',
+  calligraphy: 'toolCallig', eraser: 'toolEraser', eraserSoft: 'toolEraser', eraserPixel: 'toolPixel',
+  bucket: 'toolBucket', eyedropper: 'dropper', line: 'line', shapes: 'toolShapes',
+  symmetry: 'symmetry', 'ruler-tool': 'ruler', 'pencil-sim': 'toolPencil', 'more-tools': 'more',
 };
+
+// Herramientas por categoría (orden de la barra del editor).
+let toolbarOff = null; // listener de sincronía de categoría activa
+const TOOL_CATS = [
+  ['pencil', 'Lápices', ['pencil', 'charcoal', 'chalk', 'crayon']],
+  ['marker', 'Marcadores', ['marker', 'pixel']],
+  ['pen', 'Plumas', ['pen', 'ballpoint', 'calligraphy']],
+  ['brush', 'Pinceles', ['brush', 'watercolor']],
+  ['spray', 'Aerógrafos', ['airbrush', 'splatter']],
+  ['erase', 'Borradores', ['eraser', 'eraserSoft', 'eraserPixel']],
+  ['other', 'Otras', ['bucket', 'eyedropper', 'line', 'shapes', 'symmetry', 'ruler-tool', 'pencil-sim', 'more-tools']],
+];
+let activeCat = 'pencil';
 
 
 export async function renderStudio(ctx) {
@@ -91,6 +106,7 @@ export async function renderStudio(ctx) {
       clearTimeout(saveTimer);
       await doSave(true);
       autosaveOff?.(); offCollab?.(); offBroadcast?.(); offPointer?.();
+      toolbarOff?.(); toolbarOff = null;
       fb.setDrawing?.(false);
       const { stopScratch } = await import('../core/sounds.js'); stopScratch();
     },
@@ -112,29 +128,57 @@ export async function renderStudio(ctx) {
     return bar;
   }
 
-  // Barra horizontal de herramientas — fuera del lienzo, desplazable,
-  // con ilustraciones de herramienta y rueda de color al final.
+  // Barra de herramientas por CATEGORÍAS — fila de categorías + fila con
+  // las herramientas de la categoría activa; rueda cromática fija al final.
   function buildToolbar() {
-    const bar = el('div', { class: 'st-toolbar' });
-    const tools = [
-      ['pencil', 'toolPencil'], ['pen', 'toolPen'], ['ballpoint', 'toolCallig'], ['marker', 'toolMarker'],
-      ['brush', 'toolBrush'], ['watercolor', 'toolWater'], ['airbrush', 'toolSpray'], ['pixel', 'toolPixel'],
-      ['sep'],
-      ['bucket', 'toolBucket'], ['eyedropper', 'dropper'], ['eraser', 'toolEraser'],
-      ['sep'],
-      ['line', 'line'], ['shapes', 'toolShapes'], ['symmetry', 'symmetry'],
-      ['ruler-tool', 'ruler'], ['pencil-sim', 'toolPencil'], ['more-tools', 'more'],
-    ];
-    for (const [tool, ic] of tools) {
-      if (tool === 'sep') { bar.append(el('i', { class: 'st-sep' })); continue; }
-      const b = el('button', { class: 'st-tool', dataset: { tool }, html: icon(ic), title: BRUSHES[tool]?.name || tool, 'aria-label': BRUSHES[tool]?.name || tool });
-      b.onclick = () => onToolButton(tool, b);
-      bar.append(b);
-    }
-    // Rueda de color fija al final (anillo cromático + color actual).
+    const wrap = el('div', { class: 'st-toolwrap' });
+    const cats = el('div', { class: 'st-cats' });
+    const row = el('div', { class: 'st-toolrow' });
+    const scroll = el('div', { class: 'st-toolbar' });
     const wheelBtn = el('button', { class: 'st-wheel-btn', id: 'st-wheel-btn', 'aria-label': t('studio.color'), onclick: openColorWheel }, [el('i', { class: 'st-wheel-core', id: 'st-wheel-core' })]);
-    bar.append(el('i', { class: 'st-sep' }), wheelBtn);
-    return bar;
+    row.append(scroll, wheelBtn);
+
+    const OTHER_LABEL = { bucket: 'Cubeta', eyedropper: 'Gotero', line: 'Línea', shapes: 'Figuras', symmetry: 'Simetría', 'ruler-tool': 'Regla', 'pencil-sim': 'Lápiz virtual', 'more-tools': 'Más' };
+
+    const paintTools = () => {
+      scroll.innerHTML = '';
+      const cat = TOOL_CATS.find(([id]) => id === activeCat) || TOOL_CATS[0];
+      for (const tool of cat[2]) {
+        const label = BRUSHES[tool]?.name || OTHER_LABEL[tool] || tool;
+        const b = el('button', { class: 'st-tool', dataset: { tool } }, []);
+        b.innerHTML = icon(TOOL_ICON[tool] || 'pen');
+        b.append(el('span', { class: 'st-tool-name', text: label }));
+        b.title = label; b.setAttribute('aria-label', label);
+        b.onclick = () => onToolButton(tool, b);
+        // Entrada breve en cascada al cambiar de categoría.
+        b.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 260, delay: scroll.children.length * 28, easing: 'cubic-bezier(0.22,1,0.36,1)', fill: 'backwards' });
+        scroll.append(b);
+      }
+      refreshToolUI();
+    };
+    for (const [id, label] of TOOL_CATS) {
+      cats.append(el('button', { class: 'st-cat' + (id === activeCat ? ' active' : ''), dataset: { cat: id }, text: label, onclick: (e) => {
+        activeCat = id;
+        cats.querySelectorAll('.st-cat').forEach((c) => c.classList.remove('active'));
+        e.target.classList.add('active');
+        haptic(4);
+        paintTools();
+      } }));
+    }
+    // Si otra parte de la app selecciona una herramienta (assets, hoja "Más"),
+    // la barra salta a su categoría automáticamente.
+    toolbarOff?.();
+    toolbarOff = bus.on('engine:tool', (tool) => {
+      const cat = TOOL_CATS.find(([, , list]) => list.includes(tool));
+      if (cat && cat[0] !== activeCat) {
+        activeCat = cat[0];
+        cats.querySelectorAll('.st-cat').forEach((c) => c.classList.toggle('active', c.dataset.cat === activeCat));
+        paintTools();
+      }
+    });
+    wrap.append(cats, row);
+    paintTools();
+    return wrap;
   }
 
   function buildDock() {
@@ -234,7 +278,7 @@ function onToolButton(tool, btn) {
   if (tool === 'shapes') return openShapes();
   if (tool === 'symmetry') return openSymmetry();
   if (tool === 'more-tools') return openMoreTools();
-  if (tool === 'ruler-tool') { const on = ruler.toggle(); btn.classList.toggle('active', on); toast(on ? 'Regla activa — barrera física' : 'Regla desactivada'); return; }
+  if (tool === 'ruler-tool') { const on = ruler.toggle(); btn.classList.toggle('active', on); toast(on ? 'Regla activa — trazos perfectamente rectos' : 'Regla desactivada'); return; }
   if (tool === 'pencil-sim') { engine.pencilMode = !engine.pencilMode; btn.classList.toggle('active', engine.pencilMode); toast(engine.pencilMode ? 'Simular Pincel Virtual activado' : 'Pincel virtual desactivado'); return; }
   engine.setTool(tool);
   refreshToolUI();

@@ -38,18 +38,60 @@ export async function renderGallery(ctx) {
   view.append(filterBar);
   function syncChips() { filterBar.querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', c.dataset.f === filter)); }
 
+  // Vista previa dinámica: los recuerdos cobran vida — miniaturas que van
+  // cambiando solas, en orden aleatorio, con fundidos suaves y paneo lento.
+  const liveWrap = el('div');
   const foldersWrap = el('div');
   const feedWrap = el('div', { class: 'inbox-feed' });
-  view.append(foldersWrap, feedWrap);
+  view.append(liveWrap, foldersWrap, feedWrap);
 
+  let liveTimer = null;
+  await renderLive();
   await renderFolders();
   await renderFeed();
 
   const offs = [
-    bus.on('gallery:refresh', () => { renderFolders(); renderFeed(); }),
+    bus.on('gallery:refresh', () => { renderLive(); renderFolders(); renderFeed(); }),
     bus.on('shared:list', () => renderFeed()),
   ];
-  return { leave: () => offs.forEach((o) => o()) };
+  return { leave: () => { clearInterval(liveTimer); offs.forEach((o) => o()); } };
+
+  // ---------- Recuerdos vivos ----------
+  async function renderLive() {
+    clearInterval(liveTimer);
+    liveWrap.innerHTML = '';
+    const drawings = (await db.allByIndex('drawings', 'updatedAt', 'prev')).filter((d) => d.thumb && !(d.secret && !d.revealed && (d.owner === 'partner' || d.received)));
+    if (drawings.length < 2) return; // con 0-1 dibujos no hay rotación que mostrar
+    const panel = el('div', { class: 'memories-live' });
+    const imgA = el('img', { alt: '' });
+    const imgB = el('img', { alt: '' });
+    const caption = el('div', { class: 'ml-caption' }, [el('div', {}, [el('div', { class: 'ml-title' }), el('div', { class: 'ml-sub' })]), null]);
+    const badge = el('div', { class: 'ml-badge', html: icon('heart') + '<span>Sus recuerdos</span>' });
+    panel.append(imgA, imgB, badge, caption);
+    liveWrap.append(panel);
+
+    let current = null;         // dibujo mostrado
+    let front = imgA;           // capa visible
+    const pickNext = () => {
+      const pool = drawings.filter((d) => d !== current);
+      return pool[Math.floor(Math.random() * pool.length)] || drawings[0];
+    };
+    const show = (d) => {
+      const back = front === imgA ? imgB : imgA;
+      back.src = d.thumb;
+      // reinicia el Ken Burns de la capa entrante
+      back.classList.remove('show'); void back.offsetWidth;
+      back.classList.add('show');
+      front.classList.remove('show');
+      front = back; current = d;
+      caption.querySelector('.ml-title').textContent = d.title || t('studio.untitled');
+      const who = (d.owner === 'partner' || d.received) ? store.get().partner.name : store.get().profile.name;
+      caption.querySelector('.ml-sub').textContent = `${who} · ${fmtDate(d.updatedAt || d.createdAt, getLang())}`;
+    };
+    show(pickNext());
+    liveTimer = setInterval(() => { if (!document.hidden) show(pickNext()); }, 3800);
+    panel.onclick = () => { if (current) openDrawing(current); };
+  }
 
   // ---------- Carpetas ----------
   async function renderFolders() {

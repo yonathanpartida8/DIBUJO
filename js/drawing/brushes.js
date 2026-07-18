@@ -1,9 +1,15 @@
-// Brush library. Each brush is a "dab" function; the engine walks the path and
-// places dabs at spacing intervals. A seeded RNG (passed in) keeps scatter
-// deterministic so replaying the recorded strokes reproduces the exact artwork.
+// ============================================================
+// Biblioteca de pinceles. Cada pincel es una función de "dab";
+// el motor recorre el trazo y estampa dabs a intervalos.
+// Un PRNG sembrado (mulberry32) mantiene el grano determinista
+// para que la reproducción del proceso sea idéntica.
+//
+// v4: cada pincel tiene comportamiento, textura y propósito
+// claramente DIFERENTE — nada de duplicados con variaciones.
+// ============================================================
 import { hexToRgb } from './color.js';
 
-// Seeded PRNG (mulberry32) — deterministic per stroke.
+// PRNG sembrado (mulberry32) — determinista por trazo.
 export function makeRng(seed) {
   let a = seed >>> 0;
   return function () {
@@ -29,115 +35,177 @@ function hardDab(ctx, x, y, r, hex, alpha) {
   ctx.fillStyle = rgba(hex, alpha);
   ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
 }
+// Punta biselada (elipse orientada) — marcadores y caligrafía.
+function chiselDab(ctx, x, y, rx, ry, ang, hex, alpha) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+  ctx.fillStyle = rgba(hex, alpha);
+  ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.fill();
+  ctx.restore();
+}
 
 export const BRUSHES = {
+  /* ---------- LÁPICES (secos, con grano) ---------- */
   pencil: {
-    id: 'pencil', name: 'Lápiz', cat: 'dry', emoji: '✏️', size: 4, opacity: 0.9, spacing: 0.12, grain: true,
+    id: 'pencil', name: 'Lápiz', cat: 'pencil', size: 3.5, opacity: 0.9, spacing: 0.16,
+    // Grafito fino: núcleo delgado + estrías de grano a lo largo del trazo.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      // fine graphite: small core + scattered grain
-      hardDab(ctx, x, y, r * 0.72, hex, o * 0.85);
-      const n = 2 + (r | 0);
+      hardDab(ctx, x, y, r * 0.55, hex, o * 0.5);
+      const n = 3 + (r | 0);
       for (let i = 0; i < n; i++) {
-        const a = rng() * 6.283, d = rng() * r;
-        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, 0.6, hex, o * 0.4 * rng());
-      }
-    },
-  },
-  pen: {
-    id: 'pen', name: 'Pluma', cat: 'ink', emoji: '🖋️', size: 5, opacity: 1, spacing: 0.08,
-    dab(ctx, x, y, r, hex, o) { hardDab(ctx, x, y, r, hex, o); },
-  },
-  ballpoint: {
-    id: 'ballpoint', name: 'Bolígrafo', cat: 'ink', emoji: '🖊️', size: 2.4, opacity: 0.95, spacing: 0.1, grain: true,
-    dab(ctx, x, y, r, hex, o, hard, ang, rng) { hardDab(ctx, x, y, r, hex, o * (0.7 + rng() * 0.3)); },
-  },
-  marker: {
-    id: 'marker', name: 'Marcador', cat: 'ink', emoji: '🖍️', size: 16, opacity: 0.55, spacing: 0.14, blend: 'multiply',
-    dab(ctx, x, y, r, hex, o) { hardDab(ctx, x, y, r, hex, o); },
-  },
-  brush: {
-    id: 'brush', name: 'Pincel', cat: 'wet', emoji: '🖌️', size: 14, opacity: 0.92, spacing: 0.08,
-    dab(ctx, x, y, r, hex, o, hard) { softDab(ctx, x, y, r, hex, o, hard ?? 0.85); },
-  },
-  watercolor: {
-    id: 'watercolor', name: 'Acuarela', cat: 'wet', emoji: '💧', size: 26, opacity: 0.16, spacing: 0.22, grain: true, blend: 'multiply',
-    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      for (let i = 0; i < 3; i++) {
-        const jx = (rng() - 0.5) * r * 0.6, jy = (rng() - 0.5) * r * 0.6;
-        softDab(ctx, x + jx, y + jy, r * (0.7 + rng() * 0.5), hex, o * (0.5 + rng() * 0.5), 0.1);
-      }
-    },
-  },
-  airbrush: {
-    id: 'airbrush', name: 'Aerógrafo', cat: 'spray', emoji: '💨', size: 34, opacity: 0.05, spacing: 0.25, grain: true,
-    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      const n = 14 + (r | 0);
-      for (let i = 0; i < n; i++) {
-        const a = rng() * 6.283, d = Math.pow(rng(), 0.6) * r;
-        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, 0.7 + rng(), hex, o * (0.6 + rng() * 0.4));
-      }
-    },
-  },
-  chalk: {
-    id: 'chalk', name: 'Tiza', cat: 'dry', emoji: '🧴', size: 18, opacity: 0.85, spacing: 0.2, grain: true,
-    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      const n = 10 + (r | 0) * 2;
-      for (let i = 0; i < n; i++) {
-        const a = rng() * 6.283, d = Math.pow(rng(), 0.5) * r;
-        if (rng() > 0.35) hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, 0.6 + rng() * 0.8, hex, o * (0.3 + rng() * 0.5));
+        const along = (rng() - 0.5) * r * 2.2, side = (rng() - 0.5) * r * 1.4;
+        const px = x + Math.cos(ang) * along - Math.sin(ang) * side;
+        const py = y + Math.sin(ang) * along + Math.cos(ang) * side;
+        hardDab(ctx, px, py, 0.5, hex, o * 0.35 * rng());
       }
     },
   },
   charcoal: {
-    id: 'charcoal', name: 'Carboncillo', cat: 'dry', emoji: '⚫', size: 20, opacity: 0.9, spacing: 0.16, grain: true,
+    id: 'charcoal', name: 'Carboncillo', cat: 'pencil', size: 16, opacity: 0.85, spacing: 0.14,
+    // Oscuro y polvoriento: mancha con arrastre trasero (smear).
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      softDab(ctx, x, y, r * 0.7, hex, o * 0.4, 0.2);
-      const n = 14 + (r | 0) * 2;
+      softDab(ctx, x, y, r * 0.8, hex, o * 0.5, 0.25);
+      // arrastre hacia atrás del movimiento
+      for (let i = 0; i < 4; i++) {
+        const back = rng() * r * 1.6;
+        softDab(ctx, x - Math.cos(ang) * back, y - Math.sin(ang) * back, r * (0.5 - i * 0.08), hex, o * 0.18, 0.15);
+      }
+      const n = 10 + (r | 0);
       for (let i = 0; i < n; i++) {
         const a = rng() * 6.283, d = Math.pow(rng(), 0.4) * r;
-        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, 0.6 + rng() * 1.1, hex, o * (0.35 + rng() * 0.5));
+        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, 0.5 + rng() * 1.2, hex, o * (0.2 + rng() * 0.45));
+      }
+    },
+  },
+  chalk: {
+    id: 'chalk', name: 'Tiza', cat: 'pencil', size: 18, opacity: 0.75, spacing: 0.2,
+    // Grano grueso y saltos: cubre de forma irregular, ideal sobre fondos oscuros.
+    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
+      const n = 16 + (r | 0) * 2;
+      for (let i = 0; i < n; i++) {
+        if (rng() < 0.45) continue; // saltos de tiza
+        const a = rng() * 6.283, d = Math.sqrt(rng()) * r;
+        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, 0.7 + rng() * 1.1, hex, o * (0.25 + rng() * 0.4));
       }
     },
   },
   crayon: {
-    id: 'crayon', name: 'Crayón', cat: 'dry', emoji: '🖍️', size: 14, opacity: 0.8, spacing: 0.14, grain: true,
+    id: 'crayon', name: 'Crayón', cat: 'pencil', size: 12, opacity: 0.85, spacing: 0.12,
+    // Cera: trazos gruesos con huecos donde la cera no toca el papel.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      // waxy directional grain
-      const n = 8 + (r | 0);
+      const n = 6 + (r | 0);
       for (let i = 0; i < n; i++) {
-        const off = (rng() - 0.5) * r * 1.6;
-        const px = x + Math.cos(ang + 1.57) * off, py = y + Math.sin(ang + 1.57) * off;
-        if (rng() > 0.25) hardDab(ctx, px, py, 0.7 + rng() * 0.8, hex, o * (0.4 + rng() * 0.5));
+        if (rng() < 0.3) continue;
+        const side = (rng() - 0.5) * r * 2;
+        const px = x - Math.sin(ang) * side, py = y + Math.cos(ang) * side;
+        hardDab(ctx, px, py, 1 + rng() * 1.6, hex, o * (0.5 + rng() * 0.4));
       }
     },
   },
+
+  /* ---------- MARCADORES ---------- */
+  marker: {
+    id: 'marker', name: 'Marcador', cat: 'marker', size: 18, opacity: 0.5, spacing: 0.1,
+    blend: 'multiply', noPressure: true,
+    // Punta biselada plana: banda ancha, translúcida y uniforme que se
+    // oscurece al superponer pasadas (multiply), como un marcador real.
+    dab(ctx, x, y, r, hex, o, hard, ang) {
+      chiselDab(ctx, x, y, r * 1.35, r * 0.5, ang, hex, o);
+    },
+  },
   pixel: {
-    id: 'pixel', name: 'Pixel', cat: 'special', emoji: '🟪', size: 8, opacity: 1, spacing: 0.5, pixel: true,
+    id: 'pixel', name: 'Pixel', cat: 'marker', size: 8, opacity: 1, spacing: 0.5, pixel: true, noPressure: true,
     dab(ctx, x, y, r, hex, o) {
       const s = Math.max(1, Math.round(r * 2));
       ctx.fillStyle = rgba(hex, o);
       ctx.fillRect(Math.round(x / s) * s - s / 2, Math.round(y / s) * s - s / 2, s, s);
     },
   },
+
+  /* ---------- PLUMAS (tinta nítida) ---------- */
+  pen: {
+    id: 'pen', name: 'Pluma', cat: 'pen', size: 5, opacity: 1, spacing: 0.07,
+    // Tinta limpia con borde nítido; la presión afina la línea.
+    dab(ctx, x, y, r, hex, o) { hardDab(ctx, x, y, r, hex, o); },
+  },
+  ballpoint: {
+    id: 'ballpoint', name: 'Bolígrafo', cat: 'pen', size: 2.2, opacity: 0.95, spacing: 0.1,
+    // Línea fina constante con pequeñas acumulaciones de tinta ocasionales.
+    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
+      hardDab(ctx, x, y, r * 0.9, hex, o * (0.8 + rng() * 0.2));
+      if (rng() < 0.035) hardDab(ctx, x, y, r * 1.7, hex, o * 0.55); // gotita de tinta
+    },
+  },
   calligraphy: {
-    id: 'calligraphy', name: 'Caligrafía', cat: 'ink', emoji: '✒️', size: 16, opacity: 1, spacing: 0.06, nibAngle: -0.7,
-    dab(ctx, x, y, r, hex, o, hard, ang) {
-      ctx.save(); ctx.translate(x, y); ctx.rotate(-0.7);
-      ctx.fillStyle = rgba(hex, o);
-      ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.28, 0, 0, 7); ctx.fill();
+    id: 'calligraphy', name: 'Caligrafía', cat: 'pen', size: 18, opacity: 1, spacing: 0.05, noPressure: true,
+    // Plumilla ancha en ángulo fijo: contraste dramático entre subidas y bajadas.
+    dab(ctx, x, y, r, hex, o) {
+      chiselDab(ctx, x, y, r, r * 0.16, -0.6, hex, o);
+    },
+  },
+
+  /* ---------- PINCELES (húmedos) ---------- */
+  brush: {
+    id: 'brush', name: 'Pincel', cat: 'brush', size: 16, opacity: 0.95, spacing: 0.07,
+    // Pincel redondo con borde suave y afinado marcado por presión.
+    dab(ctx, x, y, r, hex, o, hard) { softDab(ctx, x, y, r, hex, o, hard ?? 0.72); },
+  },
+  watercolor: {
+    id: 'watercolor', name: 'Acuarela', cat: 'brush', size: 34, opacity: 0.12, spacing: 0.32,
+    blend: 'multiply',
+    // Aguada translúcida con borde que se encharca (más pigmento en el filo).
+    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
+      const jx = (rng() - 0.5) * r * 0.4, jy = (rng() - 0.5) * r * 0.4;
+      softDab(ctx, x + jx, y + jy, r, hex, o, 0.05);
+      // filo encharcado
+      ctx.save();
+      ctx.strokeStyle = rgba(hex, o * 0.7);
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(x + jx, y + jy, r * (0.86 + rng() * 0.1), rng() * 6.28, rng() * 6.28 + 3.5); ctx.stroke();
       ctx.restore();
     },
   },
-  // ---- Erasers (engine composites with destination-out) ----
-  eraser: { id: 'eraser', name: 'Borrador', cat: 'erase', emoji: '🩹', size: 20, opacity: 1, spacing: 0.1, erase: true,
-    dab(ctx, x, y, r, hex, o) { hardDab(ctx, x, y, r, '#000', o); } },
-  eraserSoft: { id: 'eraserSoft', name: 'Borrador suave', cat: 'erase', emoji: '☁️', size: 28, opacity: 0.5, spacing: 0.12, erase: true,
-    dab(ctx, x, y, r, hex, o) { softDab(ctx, x, y, r, '#000', o, 0.1); } },
-  eraserPixel: { id: 'eraserPixel', name: 'Borrador píxel', cat: 'erase', emoji: '🧩', size: 10, opacity: 1, spacing: 0.5, erase: true, pixel: true,
-    dab(ctx, x, y, r) { const s = Math.max(1, Math.round(r * 2)); ctx.fillStyle = '#000'; ctx.fillRect(Math.round(x / s) * s - s / 2, Math.round(y / s) * s - s / 2, s, s); } },
+
+  /* ---------- AERÓGRAFOS ---------- */
+  airbrush: {
+    id: 'airbrush', name: 'Aerógrafo', cat: 'spray', size: 46, opacity: 0.035, spacing: 0.3,
+    // Niebla amplia y uniforme para degradados y sombras.
+    dab(ctx, x, y, r, hex, o) { softDab(ctx, x, y, r, hex, o, 0.02); },
+  },
+  splatter: {
+    id: 'splatter', name: 'Salpicado', cat: 'spray', size: 34, opacity: 0.5, spacing: 0.6,
+    // Gotas dispersas de distinto tamaño — textura y energía.
+    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
+      const n = 5 + ((r / 4) | 0);
+      for (let i = 0; i < n; i++) {
+        const a = rng() * 6.283, d = Math.pow(rng(), 0.5) * r;
+        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, 0.6 + rng() * rng() * 3.4, hex, o * (0.5 + rng() * 0.5));
+      }
+    },
+  },
+
+  /* ---------- BORRADORES ---------- */
+  eraser: {
+    id: 'eraser', name: 'Borrador', cat: 'erase', size: 20, opacity: 1, spacing: 0.1, erase: true,
+    dab(ctx, x, y, r, hex, o) { hardDab(ctx, x, y, r, '#000', o); },
+  },
+  eraserSoft: {
+    id: 'eraserSoft', name: 'Borrador suave', cat: 'erase', size: 30, opacity: 0.35, spacing: 0.12, erase: true,
+    dab(ctx, x, y, r, hex, o) { softDab(ctx, x, y, r, '#000', o, 0.05); },
+  },
+  eraserPixel: {
+    id: 'eraserPixel', name: 'Borrador píxel', cat: 'erase', size: 10, opacity: 1, spacing: 0.5, erase: true, pixel: true, noPressure: true,
+    dab(ctx, x, y, r) { const s = Math.max(1, Math.round(r * 2)); ctx.fillStyle = '#000'; ctx.fillRect(Math.round(x / s) * s - s / 2, Math.round(y / s) * s - s / 2, s, s); },
+  },
 };
 
 export const BRUSH_LIST = Object.values(BRUSHES);
+
+// Categorías del editor (orden de presentación).
 export const BRUSH_CATS = {
-  ink: 'Tinta', dry: 'Secos', wet: 'Húmedos', spray: 'Spray', special: 'Especiales', erase: 'Borradores',
+  pencil: 'Lápices',
+  marker: 'Marcadores',
+  pen: 'Plumas',
+  brush: 'Pinceles',
+  spray: 'Aerógrafos',
+  erase: 'Borradores',
 };

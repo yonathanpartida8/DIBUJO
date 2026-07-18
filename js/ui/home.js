@@ -38,44 +38,75 @@ export async function renderHome(ctx) {
   ]);
   view.append(topbar);
 
-  // Saludo dinámico.
-  const hour = new Date().getHours();
+  // Saludo dinámico con fecha del día.
+  const now = new Date();
+  const hour = now.getHours();
+  const dateLine = now.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
   const p = store.get().partner;
   const presence = p.drawing ? `${p.name} está dibujando ahora` : p.online ? `${p.name} está en línea` : `${p.name} · ${timeAgo(p.lastSeen, t)}`;
+
+  const presenceChip = el('button', { class: 'hero-presence', id: 'hero-presence', onclick: () => go('chat') }, [
+    partnerAvatar(p),
+    el('i', { class: 'presence-dot' + (p.online ? ' on' : '') }),
+    el('span', { text: presence }),
+  ]);
   const center = el('div', { class: 'hero-center' }, [
+    el('div', { class: 'hero-date', text: dateLine }),
     el('div', { class: 'hero-greet', text: `${greetingFor(hour)},` }),
     el('div', { class: 'hero-name', text: s.profile.name }),
-    el('div', { class: 'hero-presence', id: 'hero-presence' }, [
-      el('i', { class: 'presence-dot' + (p.online ? ' on' : '') }),
-      el('span', { text: presence }),
-    ]),
+    presenceChip,
   ]);
   view.append(center);
 
-  // Dos botones principales — glass premium con brillo interactivo.
+  // Dos botones principales — glass premium con brillo que sigue al dedo
+  // e inclinación 3D sutil mientras se mantiene presionado.
   const actions = el('div', { class: 'hero-actions' }, [
     heroButton('pen', 'Dibujar', 'Un lienzo nuevo para los dos', 'draw', () => go('studio-new')),
     heroButton('inbox', 'Inbox', 'Sus dibujos y sorpresas', 'inbox', () => go('gallery')),
   ]);
   view.append(actions);
 
-  // Entrada escalonada con WAAPI.
-  const seq = [topbar, center.children[0], center.children[1], center.children[2], actions.children[0], actions.children[1]];
-  seq.forEach((node, i) => {
+  // Entrada escalonada: la fecha y el saludo llegan con desenfoque → nitidez.
+  const seq = [
+    [topbar, 0], [center.children[0], 1], [center.children[1], 2],
+    [center.children[2], 3], [presenceChip, 4], [actions.children[0], 5], [actions.children[1], 6],
+  ];
+  for (const [node, i] of seq) {
     node.animate(
-      [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'none' }],
-      { duration: 620, delay: 90 + i * 110, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
+      [{ opacity: 0, transform: 'translateY(20px)', filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0px)' }],
+      { duration: 680, delay: 80 + i * 95, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
     );
-  });
+  }
+
+  function partnerAvatar(pp) {
+    const a = el('span', { class: 'hero-mini-avatar' });
+    if (pp.avatar) a.append(el('img', { src: pp.avatar }));
+    else a.textContent = (pp.name || '?')[0].toUpperCase();
+    return a;
+  }
 
   function heroButton(ic, title, sub, kind, fn) {
     const b = el('button', { class: `hero-btn hero-btn-${kind}` }, [
+      el('span', { class: 'hb-glow' }),
       el('span', { class: 'hb-shine' }),
       el('span', { class: 'hb-icon', html: icon(ic) }),
       el('span', { class: 'hb-text' }, [el('span', { class: 'hb-title', text: title }), el('span', { class: 'hb-sub', text: sub })]),
       el('span', { class: 'hb-arrow', html: icon('back') }),
     ]);
-    b.addEventListener('pointerdown', (e) => { aurora.touch(e.clientX, e.clientY); playFx('tap'); });
+    // Brillo radial que sigue el punto de contacto + inclinación 3D.
+    const setPointer = (e) => {
+      const r = b.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+      b.style.setProperty('--px', (px * 100) + '%');
+      b.style.setProperty('--py', (py * 100) + '%');
+      b.style.setProperty('--tiltX', ((py - 0.5) * -6) + 'deg');
+      b.style.setProperty('--tiltY', ((px - 0.5) * 8) + 'deg');
+    };
+    b.addEventListener('pointerdown', (e) => { setPointer(e); b.classList.add('pressed'); aurora.touch(e.clientX, e.clientY); playFx('tap'); });
+    b.addEventListener('pointermove', (e) => { if (b.classList.contains('pressed')) setPointer(e); });
+    const release = () => b.classList.remove('pressed');
+    b.addEventListener('pointerup', release);
+    b.addEventListener('pointercancel', release);
     b.addEventListener('click', fn);
     return b;
   }
