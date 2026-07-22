@@ -46,7 +46,7 @@ function chiselDab(ctx, x, y, rx, ry, ang, hex, alpha) {
 export const BRUSHES = {
   /* ---------- LÁPICES (secos, con grano) ---------- */
   pencil: {
-    id: 'pencil', name: 'Lápiz', cat: 'pencil', size: 3.5, opacity: 0.9, spacing: 0.16,
+    id: 'pencil', name: 'Lápiz', cat: 'pencil', size: 5, opacity: 0.9, spacing: 0.14,
     // Grafito fino: núcleo delgado + estrías de grano a lo largo del trazo.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
       hardDab(ctx, x, y, r * 0.55, hex, o * 0.5);
@@ -60,7 +60,7 @@ export const BRUSHES = {
     },
   },
   charcoal: {
-    id: 'charcoal', name: 'Carboncillo', cat: 'pencil', size: 16, opacity: 0.85, spacing: 0.14,
+    id: 'charcoal', name: 'Carboncillo', cat: 'pencil', size: 18, opacity: 0.85, spacing: 0.12,
     // Oscuro y polvoriento: mancha con arrastre trasero (smear).
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
       softDab(ctx, x, y, r * 0.8, hex, o * 0.5, 0.25);
@@ -77,7 +77,7 @@ export const BRUSHES = {
     },
   },
   chalk: {
-    id: 'chalk', name: 'Tiza', cat: 'pencil', size: 18, opacity: 0.75, spacing: 0.2,
+    id: 'chalk', name: 'Tiza', cat: 'pencil', size: 20, opacity: 0.8, spacing: 0.16,
     // Grano grueso y saltos: cubre de forma irregular, ideal sobre fondos oscuros.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
       const n = 16 + (r | 0) * 2;
@@ -89,7 +89,7 @@ export const BRUSHES = {
     },
   },
   crayon: {
-    id: 'crayon', name: 'Crayón', cat: 'pencil', size: 12, opacity: 0.85, spacing: 0.12,
+    id: 'crayon', name: 'Crayón', cat: 'pencil', size: 14, opacity: 0.9, spacing: 0.1,
     // Cera: trazos gruesos con huecos donde la cera no toca el papel.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
       const n = 6 + (r | 0);
@@ -104,7 +104,7 @@ export const BRUSHES = {
 
   /* ---------- MARCADORES ---------- */
   marker: {
-    id: 'marker', name: 'Marcador', cat: 'marker', size: 18, opacity: 0.5, spacing: 0.1,
+    id: 'marker', name: 'Marcador', cat: 'marker', size: 24, opacity: 0.55, spacing: 0.06,
     blend: 'multiply', noPressure: true,
     // Punta biselada plana: banda ancha, translúcida y uniforme que se
     // oscurece al superponer pasadas (multiply), como un marcador real.
@@ -123,12 +123,12 @@ export const BRUSHES = {
 
   /* ---------- PLUMAS (tinta nítida) ---------- */
   pen: {
-    id: 'pen', name: 'Pluma', cat: 'pen', size: 5, opacity: 1, spacing: 0.07,
+    id: 'pen', name: 'Pluma', cat: 'pen', size: 7, opacity: 1, spacing: 0.06,
     // Tinta limpia con borde nítido; la presión afina la línea.
     dab(ctx, x, y, r, hex, o) { hardDab(ctx, x, y, r, hex, o); },
   },
   ballpoint: {
-    id: 'ballpoint', name: 'Bolígrafo', cat: 'pen', size: 2.2, opacity: 0.95, spacing: 0.1,
+    id: 'ballpoint', name: 'Bolígrafo', cat: 'pen', size: 3.2, opacity: 0.95, spacing: 0.09,
     // Línea fina constante con pequeñas acumulaciones de tinta ocasionales.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
       hardDab(ctx, x, y, r * 0.9, hex, o * (0.8 + rng() * 0.2));
@@ -136,7 +136,7 @@ export const BRUSHES = {
     },
   },
   calligraphy: {
-    id: 'calligraphy', name: 'Caligrafía', cat: 'pen', size: 18, opacity: 1, spacing: 0.05, noPressure: true,
+    id: 'calligraphy', name: 'Caligrafía', cat: 'pen', size: 22, opacity: 1, spacing: 0.04, noPressure: true,
     // Plumilla ancha en ángulo fijo: contraste dramático entre subidas y bajadas.
     dab(ctx, x, y, r, hex, o) {
       chiselDab(ctx, x, y, r, r * 0.16, -0.6, hex, o);
@@ -145,12 +145,12 @@ export const BRUSHES = {
 
   /* ---------- PINCELES (húmedos) ---------- */
   brush: {
-    id: 'brush', name: 'Pincel', cat: 'brush', size: 16, opacity: 0.95, spacing: 0.07,
+    id: 'brush', name: 'Pincel', cat: 'brush', size: 20, opacity: 0.95, spacing: 0.06,
     // Pincel redondo con borde suave y afinado marcado por presión.
     dab(ctx, x, y, r, hex, o, hard) { softDab(ctx, x, y, r, hex, o, hard ?? 0.72); },
   },
   watercolor: {
-    id: 'watercolor', name: 'Acuarela', cat: 'brush', size: 34, opacity: 0.12, spacing: 0.32,
+    id: 'watercolor', name: 'Acuarela', cat: 'brush', size: 40, opacity: 0.14, spacing: 0.28,
     blend: 'multiply',
     // Aguada translúcida con borde que se encharca (más pigmento en el filo).
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
@@ -167,7 +167,7 @@ export const BRUSHES = {
 
   /* ---------- AERÓGRAFOS ---------- */
   airbrush: {
-    id: 'airbrush', name: 'Aerógrafo', cat: 'spray', size: 46, opacity: 0.035, spacing: 0.3,
+    id: 'airbrush', name: 'Aerógrafo', cat: 'spray', size: 52, opacity: 0.04, spacing: 0.26,
     // Niebla amplia y uniforme para degradados y sombras.
     dab(ctx, x, y, r, hex, o) { softDab(ctx, x, y, r, hex, o, 0.02); },
   },

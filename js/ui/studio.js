@@ -727,7 +727,8 @@ function renderMediaOverlay(media) {
 
 // Barra contextual flotante sobre el objeto seleccionado.
 function objContextBar(m) {
-  const bar = el('div', { class: 'obj-bar', style: { left: (m.x + m.w / 2) + 'px', top: Math.max(8, m.y - 84) + 'px' } });
+  const inv = 1 / (engine.baseScale * engine.zoom);
+  const bar = el('div', { class: 'obj-bar', style: { left: (m.x + m.w / 2) + 'px', top: Math.max(8, m.y - 92 * inv) + 'px' } });
   const btn = (ic, label, fn) => el('button', { class: 'ob-btn', html: icon(ic), title: label, 'aria-label': label, onclick: (e) => { e.stopPropagation(); fn(); } });
   bar.append(
     btn('dup', 'Duplicar', () => { const copy = { ...m, id: undefined, x: m.x + 30, y: m.y + 30 }; delete copy._img; delete copy._still; const nm = engine.addMedia(copy); if (m._img) nm._img = m._img; selectedMediaId = nm.id; renderMediaOverlay(engine.media); }),

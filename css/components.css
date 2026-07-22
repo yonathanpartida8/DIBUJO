@@ -76,7 +76,7 @@
 .input, .textarea, .select {
   width: 100%; padding: 13px 16px; border-radius: var(--r-md);
   background: var(--surface-inset); border: 1px solid var(--line);
-  color: var(--text); font-size: 0.95rem;
+  color: var(--text); font-size: 16px; /* <16px provoca auto-zoom del navegador en móvil */
   transition: border var(--dur-2) var(--ease), background var(--dur-2) var(--ease);
 }
 .input:focus, .textarea:focus, .select:focus { outline: none; border-color: var(--primary); background: var(--surface); }
@@ -303,16 +303,16 @@
 @keyframes fadeIn { from { opacity: 0; } }
 .vinyl-bg { position: absolute; inset: 0; filter: blur(48px) saturate(1.4) brightness(0.7); opacity: 0.55; transition: background var(--dur-3) var(--ease); }
 .vinyl-card {
-  position: relative; width: min(380px, calc(100% - 32px));
+  position: relative; width: min(330px, 92vw); max-height: 86dvh; overflow: hidden;
   background: var(--glass); backdrop-filter: blur(28px) saturate(1.5);
-  border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-lg);
-  padding: var(--s-6) var(--s-5); text-align: center;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  border: 1px solid var(--line); border-radius: 28px; box-shadow: var(--shadow-lg);
+  padding: 46px 18px 20px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
   animation: modalIn var(--dur-3) var(--ease-soft);
 }
-.vinyl-close { position: absolute; top: 12px; right: 12px; }
+.vinyl-close { position: absolute; top: 8px; right: 8px; width: 38px; height: 38px; z-index: 2; }
 .vinyl-disc {
-  position: relative; width: 190px; height: 190px; border-radius: 50%;
+  position: relative; width: 148px; height: 148px; border-radius: 50%;
   background: radial-gradient(circle, #4a4152 16%, #2c2734 17%, #241f2c 100%);
   box-shadow: var(--shadow-lg), inset 0 0 30px rgba(0,0,0,.6);
   display: grid; place-items: center;
@@ -320,18 +320,19 @@
 .vinyl-disc.spin { animation: vinylSpin 4s linear infinite; }
 @keyframes vinylSpin { to { transform: rotate(360deg); } }
 .vinyl-grooves { position: absolute; inset: 14px; border-radius: 50%; background: repeating-radial-gradient(circle, transparent 0 3px, rgba(255,255,255,.045) 3px 4px); }
-.vinyl-label { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--rose), var(--lav)); display: grid; place-items: center; font-size: 1.5rem; box-shadow: inset 0 0 8px rgba(0,0,0,.25); }
+.vinyl-label { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--rose), var(--lav)); display: grid; place-items: center; font-size: 1.5rem; box-shadow: inset 0 0 8px rgba(0,0,0,.25); }
 .vinyl-cover { position: absolute; } /* reservado para portada flotante */
 .vinyl-cover img { width: 74px; height: 74px; border-radius: 50%; object-fit: cover; }
-.vinyl-title { font-family: var(--font-round); font-weight: 800; font-size: 1.15rem; margin-top: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vinyl-artist { color: var(--text-2); font-size: 0.85rem; }
-.vinyl-eq { display: flex; align-items: flex-end; gap: 3px; height: 38px; margin: 6px 0 2px; }
+.vinyl-title { font-family: var(--font-round); font-weight: 800; font-size: 1rem; margin-top: 6px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px; }
+.vinyl-artist { color: var(--text-2); font-size: 0.8rem; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vinyl-eq { display: flex; align-items: flex-end; gap: 3px; height: 26px; margin: 4px 0 0; }
 .vinyl-eq i { width: 5px; height: 6px; border-radius: 3px; background: linear-gradient(180deg, var(--rose), var(--lav)); transition: height 0.09s linear; }
-.vinyl-seek { display: flex; align-items: center; gap: 8px; width: 100%; }
+.vinyl-seek { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; }
 .v-time { font-size: 0.72rem; color: var(--text-2); width: 38px; }
-.vinyl-controls { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.vinyl-controls { display: flex; align-items: center; gap: 10px; margin-top: 2px; width: 100%; justify-content: center; }
+.vinyl-controls .slider { max-width: 90px; }
 .vinyl-play {
-  width: 60px; height: 60px; border-radius: 50%; font-size: 1.5rem; color: #fff;
+  width: 54px; height: 54px; border-radius: 50%; color: #fff; flex: none;
   background: linear-gradient(135deg, var(--rose), var(--lav));
   box-shadow: 0 8px 22px rgba(239,146,166,.45);
   transition: transform var(--dur-1) var(--ease);
@@ -492,12 +493,13 @@ body[data-theme="dark"] .inbox-card { box-shadow: 0 3px 8px rgba(0,0,0,0.25), 0 
 .lo-emoji svg { width: 24px; height: 24px; stroke: var(--text-2); fill: none; }
 
 /* Reproductor: modos e iconos */
-.vinyl-modes { margin-bottom: 4px; }
+.vinyl-modes { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); }
+.vinyl-modes button { padding: 6px 11px; font-size: 0.74rem; }
 .vinyl-card[data-mode="cover"] .vinyl-disc { background: none; box-shadow: var(--shadow-lg); border-radius: 22px; }
 .vinyl-card[data-mode="cover"] .vinyl-grooves, .vinyl-card[data-mode="cover"] .vinyl-label { display: none; }
 .vinyl-card[data-mode="cover"] .vinyl-disc.spin { animation: none; }
 .vinyl-card[data-mode="cover"] .vinyl-cover { position: static; }
-.vinyl-card[data-mode="cover"] .vinyl-cover img { width: 190px; height: 190px; border-radius: 22px; }
+.vinyl-card[data-mode="cover"] .vinyl-cover img { width: 148px; height: 148px; border-radius: 20px; }
 .vinyl-card[data-mode="minimal"] .vinyl-disc, .vinyl-card[data-mode="minimal"] .vinyl-eq, .vinyl-card[data-mode="minimal"] .vinyl-cover { display: none; }
 .vinyl-card[data-mode="minimal"] { gap: 6px; }
 .vinyl-play svg { width: 26px; height: 26px; fill: #fff; }
@@ -643,9 +645,12 @@ body[data-theme="dark"] .hero-custom { background: rgba(46,40,54,0.5); border-co
   border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow-md);
 }
 
-/* Barra contextual de objetos seleccionados */
+/* Barra contextual de objetos — contra-escalada: tamaño real de pantalla,
+   grande y visible sin necesidad de hacer zoom. */
 .obj-bar {
-  position: absolute; z-index: 65; transform: translateX(-50%);
+  position: absolute; z-index: 65;
+  transform: translateX(-50%) scale(var(--inv, 1));
+  transform-origin: bottom center;
   display: flex; gap: 2px; padding: 6px;
   background: var(--glass); backdrop-filter: blur(18px);
   border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-md);
@@ -679,3 +684,16 @@ body[data-theme="dark"] .us-hero { background: linear-gradient(150deg, #45303a, 
 .us-hero-glow { position: absolute; inset: -40%; background: radial-gradient(40% 30% at 50% 20%, rgba(255,255,255,0.55), transparent 70%); pointer-events: none; }
 .us-hero-avatars { justify-content: center; display: flex; margin-bottom: 8px; }
 .us-hero-names { font-family: var(--font-round); font-weight: 800; font-size: 1.2rem; margin-bottom: 6px; }
+
+/* v5.1 — Editor de inicio translúcido con manijas de elementos reales */
+.hc-editor { background: color-mix(in srgb, var(--bg) 30%, transparent); backdrop-filter: blur(1.5px); }
+.hc-movers { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.hc-mover {
+  position: fixed; pointer-events: auto; touch-action: none;
+  border: 2px dashed var(--her); border-radius: 22px;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 4px; font-size: 0.66rem; font-weight: 800; color: var(--her-ink);
+  background: color-mix(in srgb, var(--her-soft) 30%, transparent);
+  cursor: grab;
+}
+.hc-mover:active { cursor: grabbing; border-style: solid; }

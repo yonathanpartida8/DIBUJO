@@ -5,6 +5,23 @@ distancia y en tiempo real. Interfaz premium en **español latino**, pastel
 refinado (no infantil), iconografía SVG profesional (sin emojis en la UI),
 inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
 
+## Novedades v5.1 (correcciones reportadas)
+
+- **Bloqueado el zoom accidental del navegador** (causa de que la app se
+  viera "gigante y borrosa"): campos a 16px (evita el auto-zoom al enfocar en
+  Android/iOS) y `touch-action: pan-x pan-y` global; el lienzo conserva su
+  propio zoom.
+- **Asas y controles de objetos SIEMPRE grandes**: se contra-escalan con el
+  zoom del lienzo (asa de rotar ~40px reales en pantalla; barra de
+  duplicar/animar/estilo/editar/eliminar visible sin hacer zoom). Igual los
+  controles de la regla.
+- **Tocadiscos compacto**: tarjeta 330px centrada, disco 148px, textos con
+  elipsis — nada se desborda de la pantalla.
+- **Inicio**: el saludo y los botones Dibujar/Inbox siempre se muestran y
+  ahora también **se pueden mover** desde el editor (manijas sobre los
+  elementos reales, con vista previa en vivo).
+- **Pinceles**: tamaños por defecto más generosos y marcador más denso.
+
 ## Novedades v5 (mejora profunda)
 
 - **Audio total**: variantes aleatorias por botón (3 por evento), loop continuo

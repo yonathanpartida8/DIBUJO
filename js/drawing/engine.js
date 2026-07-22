@@ -79,6 +79,10 @@ export class Engine {
     const cx = (this.stage.clientWidth - w) / 2 + this.panX;
     const cy = (this.stage.clientHeight - h) / 2 + this.panY;
     this.frame.style.transform = `translate(${cx}px, ${cy}px) scale(${s})`;
+    // Factor inverso: las asas y barras de los objetos viven dentro del frame
+    // escalado; con esto se contra-escalan y SIEMPRE se ven a tamaño real de
+    // pantalla, grandes y tocables, sin importar el zoom del lienzo.
+    this.frame.style.setProperty('--inv', String(1 / s));
     bus.emit('engine:zoom', this.zoom);
   }
 

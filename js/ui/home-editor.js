@@ -31,6 +31,13 @@ sync.on?.('homeCfg', (cfg) => {
 export function renderCustomLayer(host) {
   host.querySelector('.hc-layer')?.remove();
   const cfg = getHomeCfg();
+  // Los elementos propios del inicio (saludo y botones Dibujar/Inbox) siempre
+  // se muestran, y respetan la posición que el usuario les dio en el editor.
+  const pos = cfg.pos || {};
+  const center = host.querySelector('.hero-center');
+  const actions = host.querySelector('.hero-actions');
+  if (center) center.style.translate = pos.center ? `${pos.center.dx}vw ${pos.center.dy}vh` : '';
+  if (actions) actions.style.translate = pos.actions ? `${pos.actions.dx}vw ${pos.actions.dy}vh` : '';
   const layer = el('div', { class: 'hc-layer' });
   if (cfg.bg) layer.style.background = cfg.bg.includes('gradient') ? cfg.bg : `linear-gradient(180deg, ${cfg.bg}cc, transparent 70%)`;
   if (cfg.drawing) layer.append(el('img', { class: 'hc-drawing', src: cfg.drawing, alt: '' }));
@@ -70,8 +77,35 @@ export function openCustomizeSheet(homeView) {
 // ---------- Editor a pantalla completa ----------
 function openEditor(homeView, mode) {
   const cfg = structuredClone(getHomeCfg());
+  cfg.pos = cfg.pos || {};
   const overlay = el('div', { class: 'hc-editor' });
   document.body.append(overlay);
+
+  // Los elementos del inicio también se pueden MOVER: se crean manijas
+  // exactamente encima del saludo y de los botones reales (visibles detrás).
+  const movers = el('div', { class: 'hc-movers' });
+  overlay.append(movers);
+  const addMover = (key, label, target) => {
+    if (!target) return;
+    const r = target.getBoundingClientRect();
+    const box = el('div', { class: 'hc-mover', text: label, style: { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' } });
+    let start = null;
+    box.addEventListener('pointerdown', (e) => { e.stopPropagation(); box.setPointerCapture(e.pointerId); start = { x: e.clientX, y: e.clientY, base: { ...(cfg.pos[key] || { dx: 0, dy: 0 }) }, left: r.left, top: r.top }; });
+    box.addEventListener('pointermove', (e) => {
+      if (!start) return;
+      const ddx = (e.clientX - start.x), ddy = (e.clientY - start.y);
+      box.style.left = (start.left + ddx) + 'px'; box.style.top = (start.top + ddy) + 'px';
+      cfg.pos[key] = { dx: start.base.dx + ddx / innerWidth * 100, dy: start.base.dy + ddy / innerHeight * 100 };
+      // vista previa en vivo sobre el elemento real
+      target.style.translate = `${cfg.pos[key].dx}vw ${cfg.pos[key].dy}vh`;
+    });
+    box.addEventListener('pointerup', () => start = null);
+    movers.append(box);
+  };
+  setTimeout(() => {
+    addMover('center', 'Saludo y nombre — arrastra para mover', homeView?.querySelector('.hero-center'));
+    addMover('actions', 'Botones Dibujar e Inbox — arrastra para mover', homeView?.querySelector('.hero-actions'));
+  }, 60);
 
   // Lienzo de dibujo (transparente, encima de todo el inicio).
   const cv = el('canvas', { class: 'hc-canvas' });

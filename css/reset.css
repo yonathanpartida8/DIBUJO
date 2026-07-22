@@ -1,6 +1,9 @@
 /* Modern minimal reset */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* Bloquea el zoom del NAVEGADOR (pellizco/doble toque sobre la página).
+   El lienzo gestiona su propio zoom con touch-action: none. */
+html, body { touch-action: pan-x pan-y; }
 body {
   font-family: var(--font, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif);
   line-height: 1.45;
