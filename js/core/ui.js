@@ -36,7 +36,13 @@ export function sheet(title, content, { onClose, height } = {}) {
   host.append(box);
   host.hidden = false;
   import('./sounds.js').then((m) => m.playFx('panelOpen'));
-  const close = () => { box.style.animation = 'sheetIn var(--dur-3) var(--ease) reverse'; import('./sounds.js').then((m) => m.playFx('panelClose')); setTimeout(() => { host.hidden = true; host.innerHTML = ''; onClose?.(); }, 260); };
+  // El cierre retardado solo limpia si esta hoja sigue montada — así abrir
+  // una hoja nueva justo después de cerrar otra no la borra por accidente.
+  const close = () => {
+    box.style.animation = 'sheetIn var(--dur-3) var(--ease) reverse';
+    import('./sounds.js').then((m) => m.playFx('panelClose'));
+    setTimeout(() => { if (box.parentNode === host) { host.hidden = true; host.innerHTML = ''; } onClose?.(); }, 260);
+  };
   host.onclick = (e) => { if (e.target === host) close(); };
 
   // Gesto nativo: arrastrar el asa (o la cabecera) hacia abajo para cerrar.
@@ -58,7 +64,7 @@ export function sheet(title, content, { onClose, height } = {}) {
       if (startY == null) return;
       const dy = e.clientY - startY;
       box.classList.remove('dragging');
-      if (dy > 110) { box.style.transition = 'transform 0.22s ease, opacity 0.22s ease'; box.style.transform = 'translateY(110%)'; setTimeout(() => { host.hidden = true; host.innerHTML = ''; onClose?.(); }, 210); import('./sounds.js').then((m) => m.playFx('panelClose')); }
+      if (dy > 110) { box.style.transition = 'transform 0.22s ease, opacity 0.22s ease'; box.style.transform = 'translateY(110%)'; setTimeout(() => { if (box.parentNode === host) { host.hidden = true; host.innerHTML = ''; } onClose?.(); }, 210); import('./sounds.js').then((m) => m.playFx('panelClose')); }
       else { box.style.transition = 'transform 0.26s cubic-bezier(0.22,1,0.36,1)'; box.style.transform = ''; box.style.opacity = ''; setTimeout(() => box.style.transition = '', 280); }
       startY = null;
     };

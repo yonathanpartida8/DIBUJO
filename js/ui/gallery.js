@@ -24,6 +24,8 @@ export async function renderGallery(ctx) {
     el('button', { class: 'icon-btn', html: icon('back'), onclick: () => go('home') }),
     el('div', {}, [el('h1', { text: 'Inbox' }), el('div', { class: 'sub', text: 'Sus dibujos, juntos' })]),
     el('div', { class: 'header-actions' }, [
+      el('button', { class: 'icon-btn', html: icon('chat'), onclick: () => go('chat') }),
+      el('button', { class: 'icon-btn', html: icon('heart'), onclick: () => go('us') }),
       el('button', { class: 'icon-btn', html: icon('add'), onclick: () => go('studio-new') }),
     ]),
   ]);
@@ -33,9 +35,15 @@ export async function renderGallery(ctx) {
   let filter = ctx.params.filter || 'all';
   let activeFolder = null;
   const filterBar = el('div', { class: 'scroll-x', style: { marginTop: '6px' } });
-  const filters = [['all', t('gallery.all')], ['received', t('gallery.received')], ['mine', t('gallery.mine')], ['favorites', t('gallery.favorites')], ['secret', 'Secretos']];
+  const filters = [['all', t('gallery.all')], ['received', t('gallery.received')], ['mine', t('gallery.mine')], ['drafts', 'Borradores'], ['favorites', t('gallery.favorites')], ['secret', 'Secretos']];
   filters.forEach(([id, label]) => filterBar.append(el('button', { class: 'chip' + (id === filter ? ' active' : ''), text: label, dataset: { f: id }, onclick: () => { filter = id; activeFolder = null; syncChips(); renderFeed(); } })));
   view.append(filterBar);
+  // El chip de borradores muestra cuántos hay pendientes.
+  db.all('drawings').then((all) => {
+    const n = all.filter((d) => d.draft && !d.sent).length;
+    const chip = filterBar.querySelector('[data-f="drafts"]');
+    if (chip && n) chip.textContent = `Borradores · ${n}`;
+  });
   function syncChips() { filterBar.querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', c.dataset.f === filter)); }
 
   // Vista previa dinámica: los recuerdos cobran vida — miniaturas que van
@@ -130,6 +138,7 @@ export async function renderGallery(ctx) {
     }
     drawings.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     if (filter === 'favorites') drawings = drawings.filter((d) => d.favorite);
+    if (filter === 'drafts') drawings = drawings.filter((d) => d.draft && !d.sent);
     if (filter === 'received') drawings = drawings.filter((d) => d.owner === 'partner' || d.received);
     if (filter === 'mine') drawings = drawings.filter((d) => d.owner !== 'partner' && !d.received);
     if (filter === 'secret') drawings = drawings.filter((d) => d.secret);
@@ -155,8 +164,10 @@ export async function renderGallery(ctx) {
   function feedCard(d) {
     const isPartner = d.owner === 'partner' || d.received;
     const who = isPartner ? store.get().partner.name : store.get().profile.name;
-    // El secreto solo llega velado al receptor; quien lo envió lo ve normal.
-    const hidden = d.secret && !d.revealed && isPartner;
+    // Los dibujos secretos aparecen en el Inbox pero SIEMPRE velados hasta
+    // que cada persona los toca (también quien los envió).
+    const revealedSet = new Set(JSON.parse(localStorage.getItem('dibujo.revealed') || '[]'));
+    const hidden = d.secret && !revealedSet.has(d.id);
     const card = el('article', { class: 'inbox-card ' + (isPartner ? 'from-her' : 'from-me') });
 
     // Autor + fecha.
@@ -211,13 +222,19 @@ export async function renderGallery(ctx) {
     const img = card.querySelector('.ic-media img');
     img?.animate([{ filter: 'blur(26px) saturate(0.6)', transform: 'scale(1.06)' }, { filter: 'blur(0px) saturate(1)', transform: 'scale(1)' }], { duration: 900, easing: 'cubic-bezier(0.22,1,0.36,1)' });
     import('../core/sounds.js').then((m) => m.playFx('love'));
+    // Revelado local: cada quien lo abre manualmente en su dispositivo.
+    const rev = new Set(JSON.parse(localStorage.getItem('dibujo.revealed') || '[]'));
+    rev.add(d.id); localStorage.setItem('dibujo.revealed', JSON.stringify([...rev]));
     d.revealed = true;
     if (!d.remote) await db.put('drawings', d);
-    else fb.patchSharedDrawing?.(d.id, { revealed: true });
     setTimeout(() => { veil?.remove(); card.classList.remove('revealing'); }, 750);
   }
 
   async function openDrawing(d) {
+    const isPartner = d.owner === 'partner' || d.received;
+    // Lo de tu pareja solo se puede VER (nunca modificar); lo enviado queda
+    // sellado salvo que se haya marcado "Editable después".
+    if (isPartner || (d.sent && !d.editableAfter)) return openViewer(d, isPartner);
     if (d.remote && !(await db.get('drawings', d.id))) {
       // Descarga el documento completo del espacio privado antes de editar.
       try {
@@ -226,6 +243,21 @@ export async function renderGallery(ctx) {
       } catch { toast('No se pudo descargar el dibujo'); return; }
     }
     go('studio', { id: d.id });
+  }
+
+  // Visor de solo lectura — imagen grande + proceso + duplicar como copia propia.
+  function openViewer(d, isPartner) {
+    const body = el('div');
+    const sh = sheet(d.title || t('studio.untitled'), body);
+    body.append(el('img', { src: d.thumb, style: { width: '100%', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-md)' } }));
+    body.append(el('p', { style: { color: 'var(--text-3)', fontSize: '0.78rem', textAlign: 'center', margin: '10px 0' }, text: isPartner ? 'Dibujo de tu pareja — solo lectura' : 'Ya fue enviado — quedó sellado con amor' }));
+    const acts = el('div', { class: 'grid-2', style: { gap: '8px' } });
+    if (d.recording?.ops?.length) acts.append(el('button', { class: 'btn btn-ghost', html: icon('play') + ' Ver proceso', onclick: () => openPlayer({ doc: d.doc, recording: d.recording, title: d.title }) }));
+    acts.append(el('button', { class: 'btn btn-ghost', html: icon('dup') + ' Duplicar como mío', onclick: async () => {
+      const copy = { ...structuredClone(d), id: uid('draw'), title: (d.title || 'Dibujo') + ' (copia)', createdAt: Date.now(), updatedAt: Date.now(), owner: 'me', received: false, sent: false, secret: false, favorite: false };
+      await db.put('drawings', copy); sh.close(); renderFeed(); toast('Copia creada — esa sí es tuya');
+    } }));
+    body.append(acts);
   }
 
   async function cardMenu(d) {

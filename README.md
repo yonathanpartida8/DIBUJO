@@ -5,6 +5,33 @@ distancia y en tiempo real. Interfaz premium en **español latino**, pastel
 refinado (no infantil), iconografía SVG profesional (sin emojis en la UI),
 inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
 
+## Novedades v5 (mejora profunda)
+
+- **Audio total**: variantes aleatorias por botón (3 por evento), loop continuo
+  por herramienta al dibujar/borrar con detención limpia, sonidos de agarrar y
+  soltar la regla, cubeta, figuras, selección y transiciones. Carpeta `Audio/`
+  organizada y **autodetección** de tus .wav/.mp3 (con síntesis de respaldo).
+- **Inicio personalizable**: botón "Personalizar inicio" → dibujar encima,
+  añadir GIFs y textos arrastrables, fondo, corazones flotantes… e **Inicio
+  compartido** sincronizado con tu pareja en tiempo real.
+- **Título al crear**, **sistema de borradores** (guardar/descartar al salir,
+  contador visible), **hoja de envío** con "Visualizar" y "Editable después";
+  lo enviado queda sellado y lo de tu pareja es **solo lectura** (visor con
+  proceso y "duplicar como mío"). Los secretos se revelan tocando, para ambos.
+- **Regla inteligente**: dibujas libre y, al tocar su borde, el trazo se
+  desliza recto por su dirección — como una regla física.
+- **Hoja infinita**: zoom ×64 con grosor de pincel adaptado al zoom; guías
+  reales de composición; figura **corazón**.
+- **Paleta**: favoritos + historial reciente persistentes, en rueda y dock.
+- **Objetos**: barra contextual (duplicar, opacidad, sombra, animar —
+  flotar/latido/girar/mecerse —, editar texto, pausar GIF, eliminar) y
+  pellizco de dos dedos para escalar/rotar sin interferir con el dibujo.
+- **Navegación tipo app nativa**: sin barra de pestañas — arquitectura hub
+  desde el Inicio con cabeceras contextuales. Chat con botón de dibujar en la
+  barra y fondos personalizables. "Nosotros" con héroe emocional.
+- Correcciones: hoja nueva ya no se borra al abrirse tras cerrar otra, texto
+  sin deformación al redimensionar, memoria de deshacer acotada.
+
 ## Novedades v3 (rediseño premium)
 
 - **Home ultra limpia**: saludo dinámico por hora local (incluye "Buenas

@@ -51,10 +51,11 @@ export class RulerTool {
       if (e.target !== n && e.target !== this.ticks && e.target !== this.deg) return;
       e.stopPropagation();
       if (this.state.locked) return;
+      import('../core/sounds.js').then((m) => m.playFx('rulerGrab'));
       const s = this._scale();
       const sx = e.clientX, sy = e.clientY, ox = this.state.x, oy = this.state.y;
       const move = (ev) => { this.state.x = ox + (ev.clientX - sx) / s; this.state.y = oy + (ev.clientY - sy) / s; this._sync(); };
-      const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+      const up = () => { import('../core/sounds.js').then((m) => m.playFx('rulerDrop')); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
       window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
     });
     // Girar.

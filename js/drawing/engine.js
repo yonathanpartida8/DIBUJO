@@ -17,7 +17,7 @@ export class Engine {
   constructor() {
     this.docW = 1080; this.docH = 1440;
     this.stack = null;
-    this.history = new History(140);
+    this.history = new History(30);
     this.recorder = null; // set by studio
     this.tool = 'pen';
     this.color = '#5a4e58';
@@ -149,7 +149,21 @@ export class Engine {
     for (let y = step; y < h; y += step) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
     c.restore();
   }
-  setPaper(patch) { this.paper = { ...this.paper, ...patch }; this.renderPaper(); this.markDirty(); }
+  setPaper(patch) { this.paper = { ...this.paper, ...patch }; this.renderPaper(); this.renderGuides(); this.markDirty(); }
+
+  // Guías de composición (no destructivas, no se exportan): cruz central + tercios.
+  renderGuides() {
+    const c = this.octx; if (!c) return;
+    c.clearRect(0, 0, this.docW, this.docH);
+    if (!this.paper.guides) return;
+    c.save();
+    c.setLineDash([12, 10]); c.lineWidth = 1.5;
+    c.strokeStyle = 'rgba(232,137,158,0.4)';
+    const w = this.docW, h = this.docH;
+    for (const x of [w / 3, w / 2, (2 * w) / 3]) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); }
+    for (const y of [h / 3, h / 2, (2 * h) / 3]) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+    c.restore();
+  }
 
   // ---------- Composite ----------
   requestComposite() {
@@ -202,23 +216,28 @@ export class Engine {
     // Non-brush tools
     if (this.tool === 'bucket') return this._doFill(pt);
     if (this.tool === 'eyedropper') return this._doPick(pt);
-    if (['line', 'rect', 'ellipse', 'triangle', 'star', 'polygon'].includes(this.tool)) { this._shapeStart = pt; return; }
-    // Regla activa: como una regla real — el trazo se proyecta sobre su
-    // dirección y sale perfectamente recto con CUALQUIER pincel o borrador.
+    if (['line', 'rect', 'ellipse', 'triangle', 'star', 'polygon', 'heart'].includes(this.tool)) { this._shapeStart = pt; return; }
+    // Regla inteligente: dibujas libre por todo el lienzo, pero cuando el
+    // trazo TOCA el borde de la regla se desliza siguiendo su dirección,
+    // exactamente como apoyar el lápiz contra una regla real.
     if (this.ruler) {
       const dirX = Math.cos(this.ruler.angle), dirY = Math.sin(this.ruler.angle);
       const nX = -dirY, nY = dirX;
-      const off = (pt.x - this.ruler.px) * nX + (pt.y - this.ruler.py) * nY;
-      this._rulerLock = { px: this.ruler.px, py: this.ruler.py, dirX, dirY, nX, nY, off };
-      Object.assign(pt, this._projectRuler(pt));
-    } else this._rulerLock = null;
+      const d0 = (pt.x - this.ruler.px) * nX + (pt.y - this.ruler.py) * nY;
+      this._rulerGuard = { px: this.ruler.px, py: this.ruler.py, dirX, dirY, nX, nY, side: d0 >= 0 ? 1 : -1 };
+      Object.assign(pt, this._guardRuler(pt));
+    } else this._rulerGuard = null;
+
+    // Hoja infinita: el grosor se adapta al zoom para que el trazo se vea
+    // coherente en pantalla aunque el aumento sea enorme.
+    const effSize = this.paper.infinite ? Math.max(0.5, this.brushSize / this.zoom) : this.brushSize;
 
     // Brush stroke
     this._beforeSnapshot = layer.snapshot();
     this._smoothPt = { x: pt.x, y: pt.y, p: pt.p };
     const seed = (Math.random() * 2 ** 31) | 0;
     this._op = {
-      op: 'stroke', tool: this.tool, color: this.color, size: this.brushSize, opacity: this.opacity,
+      op: 'stroke', tool: this.tool, color: this.color, size: effSize, opacity: this.opacity,
       flow: this.flow, hardness: this.hardness, blend: this.stack.active.blend, seed,
       pressure: this.pressureEnabled, layerId: layer.id,
       sym: this.symmetry.mode === 'none' ? null : { mode: this.symmetry.mode, count: this.symmetry.count, ax: this.docW / 2, ay: this.docH / 2 },
@@ -231,7 +250,7 @@ export class Engine {
     this.recorder?.addPoint(this._smoothPt.x, this._smoothPt.y, this._smoothPt.p);
     this._drawing = true;
     bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: true });
-    import('../core/sounds.js').then((m) => BRUSHES[this.tool]?.erase ? m.playFx('erase') : m.startScratch());
+    import('../core/sounds.js').then((m) => m.startScratch(this.tool));
   }
   _onMove(e) {
     if (this._pointers.has(e.pointerId)) this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -251,8 +270,8 @@ export class Engine {
         y: this._smoothPt.y + (raw.y - this._smoothPt.y) * k,
         p,
       };
-      // Con regla activa el punto se proyecta a la línea → recta perfecta.
-      const drawPt = this._rulerLock ? this._projectRuler(this._smoothPt) : this._smoothPt;
+      // Con regla activa, el trazo se apoya en su borde al tocarla.
+      const drawPt = this._rulerGuard ? this._guardRuler(this._smoothPt) : this._smoothPt;
       // Incremental: paint the new segment into the stroke buffer (O(1) per point).
       this._painter.addPoint(drawPt, layer.ctx);
       this.recorder?.addPoint(drawPt.x, drawPt.y, drawPt.p);
@@ -283,12 +302,15 @@ export class Engine {
     bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: false });
     import('../core/sounds.js').then((m) => m.stopScratch());
   }
-  // Proyecta un punto sobre la línea de la regla, conservando la distancia
-  // perpendicular con la que empezó el trazo (líneas paralelas perfectas).
-  _projectRuler(pt) {
-    const rl = this._rulerLock; if (!rl) return pt;
+  // Regla como pared deslizante: si el punto intenta cruzar el borde, se
+  // apoya sobre la línea y avanza solo en su dirección; si el dedo se
+  // aleja del borde, el trazo vuelve a ser libre.
+  _guardRuler(pt) {
+    const rl = this._rulerGuard; if (!rl) return pt;
+    const d = ((pt.x - rl.px) * rl.nX + (pt.y - rl.py) * rl.nY) * rl.side;
+    if (d >= 0) return pt; // aún no toca la regla → libre
     const t = (pt.x - rl.px) * rl.dirX + (pt.y - rl.py) * rl.dirY;
-    return { x: rl.px + rl.dirX * t + rl.nX * rl.off, y: rl.py + rl.dirY * t + rl.nY * rl.off, p: pt.p };
+    return { x: rl.px + rl.dirX * t, y: rl.py + rl.dirY * t, p: pt.p };
   }
   // Aborta un trazo sin dejar rastro: ni píxeles, ni historial, ni tiempo
   // grabado (se usa cuando el segundo dedo convierte el toque en gesto).
@@ -297,7 +319,7 @@ export class Engine {
       const layer = this.stack.active;
       if (this._beforeSnapshot) layer.restore(this._beforeSnapshot);
       this.recorder?.cancelStroke();
-      this._drawing = false; this._painter = null; this._op = null; this._rulerLock = null;
+      this._drawing = false; this._painter = null; this._op = null; this._rulerGuard = null;
       import('../core/sounds.js').then((m) => m.stopScratch());
       this.requestComposite();
     }
@@ -328,13 +350,14 @@ export class Engine {
     const g = this._gesture;
     const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
     const c = this._mid(pts);
-    this.zoom = clamp(g.z0 * (d / g.d0), 0.2, 8);
+    const zMax = this.paper.infinite ? 64 : 8, zMin = this.paper.infinite ? 0.05 : 0.2;
+    this.zoom = clamp(g.z0 * (d / g.d0), zMin, zMax);
     const s = this.baseScale * this.zoom;
     this.panX = (c.x - g.rect.left) - g.anchor.x * s - (this.stage.clientWidth - this.docW * s) / 2;
     this.panY = (c.y - g.rect.top) - g.anchor.y * s - (this.stage.clientHeight - this.docH * s) / 2;
     this._applyTransform();
   }
-  setZoom(z) { this.zoom = clamp(z, 0.2, 8); this._applyTransform(); }
+  setZoom(z) { const zMax = this.paper.infinite ? 64 : 8, zMin = this.paper.infinite ? 0.05 : 0.2; this.zoom = clamp(z, zMin, zMax); this._applyTransform(); }
   resetView() { this.zoom = 1; this.panX = 0; this.panY = 0; this._applyTransform(); }
 
   // ---------- Fill / Pick ----------
@@ -348,6 +371,7 @@ export class Engine {
     this.history.push({ type: 'layer', layerId: layer.id, before, after: layer.snapshot() });
     this.recorder?.logAction({ op: 'fill', layerId: layer.id, x: Math.round(pt.x), y: Math.round(pt.y), color: this.color, tolerance: this.fillTolerance ?? 40, opacity: this.opacity });
     this.onHistoryChange?.(); this.requestComposite(); this.markDirty(); this._pushRecent(this.color);
+    import('../core/sounds.js').then((m) => m.playFx('fill'));
   }
   _doPick(pt) {
     const comp = document.createElement('canvas'); comp.width = this.docW; comp.height = this.docH;
@@ -366,6 +390,18 @@ export class Engine {
     else if (this.tool === 'rect') { seg(a.x, a.y, b.x, a.y); seg(b.x, a.y, b.x, b.y); seg(b.x, b.y, a.x, b.y); seg(a.x, b.y, a.x, a.y); }
     else if (this.tool === 'ellipse') { const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, rx = Math.abs(b.x - a.x) / 2, ry = Math.abs(b.y - a.y) / 2, n = Math.max(24, (rx + ry)); for (let i = 0; i <= n; i++) { const t = i / n * 6.283; push(cx + Math.cos(t) * rx, cy + Math.sin(t) * ry); } }
     else if (this.tool === 'triangle') { const cx = (a.x + b.x) / 2; seg(cx, a.y, b.x, b.y); seg(b.x, b.y, a.x, b.y); seg(a.x, b.y, cx, a.y); }
+    else if (this.tool === 'heart') {
+      // Corazón paramétrico ajustado al recuadro arrastrado.
+      const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+      const sx = Math.abs(b.x - a.x) / 34, sy = Math.abs(b.y - a.y) / 30;
+      const n = 90; let prev = null;
+      for (let i = 0; i <= n; i++) {
+        const t2 = (i / n) * Math.PI * 2;
+        const hx = cx + 16 * Math.pow(Math.sin(t2), 3) * sx;
+        const hy = cy - (13 * Math.cos(t2) - 5 * Math.cos(2 * t2) - 2 * Math.cos(3 * t2) - Math.cos(4 * t2)) * sy;
+        if (prev) seg(prev.x, prev.y, hx, hy); prev = { x: hx, y: hy };
+      }
+    }
     else if (this.tool === 'star' || this.tool === 'polygon') {
       const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, R = Math.hypot(b.x - a.x, b.y - a.y) / 2;
       const spikes = this.tool === 'star' ? 5 : 6; const step = Math.PI / spikes;
@@ -377,11 +413,13 @@ export class Engine {
   _previewShape(b) {
     const pts = this._shapePoints(this._shapeStart, b);
     this.octx.clearRect(0, 0, this.docW, this.docH);
+    this.renderGuides();
     this.octx.save(); this.octx.strokeStyle = this.color; this.octx.lineWidth = this.brushSize; this.octx.lineJoin = 'round'; this.octx.lineCap = 'round'; this.octx.globalAlpha = this.opacity;
     this.octx.beginPath(); pts.forEach(([x, y], i) => i ? this.octx.lineTo(x, y) : this.octx.moveTo(x, y)); this.octx.stroke(); this.octx.restore();
   }
   _commitShape(b) {
     this.octx.clearRect(0, 0, this.docW, this.docH);
+    this.renderGuides();
     const pts = this._shapePoints(this._shapeStart, b);
     if (pts.length < 2) return;
     const layer = this.stack.active; const before = layer.snapshot();
@@ -392,6 +430,7 @@ export class Engine {
     this.history.push({ type: 'layer', layerId: layer.id, before, after: layer.snapshot() });
     if (this.recorder) { this.recorder.beginStroke(op); for (const [x, y, p] of pts) this.recorder.addPoint(x, y, p); this.recorder._cur.pts = pts.map(([x, y, p]) => [x, y, p, 4]); this.recorder.endStroke(); }
     this.onHistoryChange?.(); this.requestComposite(); this.markDirty();
+    import('../core/sounds.js').then((m) => m.playFx('shape'));
   }
 
   // ---------- Tool/color setters ----------

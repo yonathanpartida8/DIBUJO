@@ -11,6 +11,7 @@ import { t } from '../core/i18n.js';
 import { icon } from './icons.js';
 import { go } from '../core/router.js';
 import { mountAurora } from '../gl/aurora.js';
+import { openCustomizeSheet, renderCustomLayer } from './home-editor.js';
 import { playFx } from '../core/sounds.js';
 
 function greetingFor(hour) {
@@ -64,7 +65,11 @@ export async function renderHome(ctx) {
     heroButton('pen', 'Dibujar', 'Un lienzo nuevo para los dos', 'draw', () => go('studio-new')),
     heroButton('inbox', 'Inbox', 'Sus dibujos y sorpresas', 'inbox', () => go('gallery')),
   ]);
+  // Botón pequeño pero visible para diseñar tu propio inicio.
+  const customBtn = el('button', { class: 'hero-custom', html: icon('sparkle') + '<span>Personalizar inicio</span>', onclick: () => openCustomizeSheet(view) });
+  actions.append(customBtn);
   view.append(actions);
+  renderCustomLayer(view);
 
   // Entrada escalonada: la fecha y el saludo llegan con desenfoque → nitidez.
   const seq = [
@@ -102,7 +107,7 @@ export async function renderHome(ctx) {
       b.style.setProperty('--tiltX', ((py - 0.5) * -6) + 'deg');
       b.style.setProperty('--tiltY', ((px - 0.5) * 8) + 'deg');
     };
-    b.addEventListener('pointerdown', (e) => { setPointer(e); b.classList.add('pressed'); aurora.touch(e.clientX, e.clientY); playFx('tap'); });
+    b.addEventListener('pointerdown', (e) => { setPointer(e); b.classList.add('pressed'); aurora.touch(e.clientX, e.clientY); });
     b.addEventListener('pointermove', (e) => { if (b.classList.contains('pressed')) setPointer(e); });
     const release = () => b.classList.remove('pressed');
     b.addEventListener('pointerup', release);
@@ -112,6 +117,7 @@ export async function renderHome(ctx) {
   }
 
   const offs = [
+    bus.on('home:custom', () => renderCustomLayer(view)),
     bus.on('store:partner', () => {
       const pr = store.get().partner;
       const node = $('#hero-presence');

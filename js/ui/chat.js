@@ -28,6 +28,7 @@ export async function renderChat(ctx) {
     el('button', { class: 'icon-btn', html: icon('back'), onclick: () => go('home') }),
     avatarEl(p),
     el('div', { class: 'who' }, [el('div', { class: 'n', text: p.name }), presenceEl()]),
+    el('button', { class: 'icon-btn', html: icon('sun'), 'aria-label': 'Personalizar chat', onclick: () => customizeChat(scroll) }),
     el('button', { class: 'icon-btn', html: icon('heart'), onclick: () => go('us') }),
   ]);
   const pinned = el('div', { class: 'chat-pinned', hidden: true });
@@ -38,6 +39,7 @@ export async function renderChat(ctx) {
   root.append(wrap);
 
   await loadMessages(scroll, pinned);
+  applyChatBg(scroll);
 
   const offs = [
     // Mensajes entrantes en tiempo real.
@@ -53,6 +55,7 @@ export async function renderChat(ctx) {
       if (!msg?.id) return;
       await db.put('messages', msg);
       await loadMessages(scroll, pinned);
+  applyChatBg(scroll);
     }),
     sync.on('typing', () => showTyping(scroll)),
     bus.on('store:partner', () => {
@@ -240,9 +243,10 @@ function buildInput(scroll, replyBar) {
   const plus = el('button', { class: 'icon-btn', html: icon('plus'), onclick: () => openAttach(scroll) });
   const field = el('input', { class: 'input grow', placeholder: t('chat.placeholder') });
   const emojiBtn = el('button', { class: 'icon-btn', html: icon('emoji'), onclick: () => quickEmoji(field) });
+  const drawBtn = el('button', { class: 'icon-btn', html: icon('toolPencil'), 'aria-label': 'Dibujar aquí', onclick: () => openMiniSketch(scroll) });
   const micBtn = el('button', { class: 'icon-btn', html: icon('mic'), onclick: () => recordVoice(scroll) });
   const sendBtn = el('button', { class: 'icon-btn active send-btn', html: icon('send'), onclick: send });
-  bar.append(plus, field, emojiBtn, micBtn, sendBtn);
+  bar.append(plus, drawBtn, field, emojiBtn, micBtn, sendBtn);
   field.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
   let typingTmr; field.addEventListener('input', () => { clearTimeout(typingTmr); typingTmr = setTimeout(() => sync.send('typing', {}), 150); });
   function send() {
@@ -279,6 +283,23 @@ function simulateReply(scroll, srcMsg) {
     const m = { id: uid('msg'), ts: Date.now(), from: 'them', type: 'text', text: replies[Math.floor(Math.random() * replies.length)], state: 'read' };
     await db.put('messages', m); appendMessage(scroll, m, true); sound('receive');
   }, 2600);
+}
+
+// Personalización visual del chat: fondo a elegir, guardado por usuario.
+function customizeChat(scroll) {
+  const body = el('div');
+  const sh = sheet('Personalizar chat', body);
+  const opts = [['', 'Clásico'], ['linear-gradient(180deg,#fbe9ee,#f3ecf8)', 'Rosa'], ['linear-gradient(180deg,#e9f3ed,#eef2fa)', 'Menta'], ['linear-gradient(180deg,#fdf3e2,#fbe9ee)', 'Atardecer'], ['linear-gradient(180deg,#efe7fb,#e3edfa)', 'Lavanda']];
+  const grid = el('div', { class: 'grid-2' });
+  opts.forEach(([bg, label]) => grid.append(el('button', { class: 'card', style: { background: bg || 'var(--surface)', minHeight: '64px', fontWeight: 800 }, text: label, onclick: () => {
+    localStorage.setItem('dibujo.chatBg', bg);
+    applyChatBg(scroll); sh.close();
+  } })));
+  body.append(grid);
+}
+function applyChatBg(scroll) {
+  const bg = localStorage.getItem('dibujo.chatBg') || '';
+  if (scroll) scroll.style.background = bg;
 }
 
 function quickEmoji(field) {

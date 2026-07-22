@@ -12,6 +12,8 @@ const defaults = {
     coupleId: null,
   },
   widgets: null,           // disposición de widgets del inicio (null = por defecto)
+  homeCustom: null,        // personalización del inicio { bg, drawing, gifs[], texts[], effects, shared }
+  colors: { recent: [], favs: ['#e8899e', '#8fbca4', '#a68fd0', '#5a4e58'] },
   settings: {
     theme: 'pastel',        // pastel | light | dark | auto
     language: 'es',         // es | en

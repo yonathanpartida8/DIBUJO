@@ -115,7 +115,7 @@ export async function renderStudio(ctx) {
   // ---------- builders ----------
   function buildTopBar() {
     const bar = el('div', { class: 'st-top' });
-    const back = el('button', { class: 'icon-btn', html: icon('back'), onclick: async () => { await doSave(true); go('gallery'); } });
+    const back = el('button', { class: 'icon-btn', html: icon('back'), onclick: onBack });
     const undo = el('button', { class: 'icon-btn', id: 'btn-undo', html: icon('undo'), onclick: () => { engine.undo(); haptic(); } });
     const redo = el('button', { class: 'icon-btn', id: 'btn-redo', html: icon('redo'), onclick: () => { engine.redo(); haptic(); } });
     const title = el('div', { class: 'title' }, [
@@ -201,7 +201,6 @@ export async function renderStudio(ctx) {
       mk('image', openMedia, t('studio.media')),
       mk('sticker', openAssetsPanel, 'Assets'),
       mk('music', openMusic, t('studio.music')),
-      mk('play', () => openPlayer({ doc: engine.serialize(), recording: recorder.serialize(), title: current?.title }), t('studio.play')),
       mk('stats', () => openStatsSheet(recorder.stats(), current), t('studio.stats')),
       mk('save', () => doSave(true).then(() => toast(t('toast.saved'), { icon: '💕' })), t('common.save')),
     );
@@ -230,6 +229,25 @@ function newDrawing() {
   recorder.reset();
   $('#st-title').textContent = t('studio.untitled');
   startTimer();
+  // Antes de entrar al lienzo, pedimos un título para el dibujo.
+  setTimeout(async () => {
+    const name = await promptDialog({ title: '¿Cómo se llamará este dibujo?', placeholder: 'Nuestro atardecer…', confirmText: 'Comenzar' });
+    if (name) $('#st-title').textContent = name;
+  }, 350);
+}
+
+// Atrás: si hay trabajo sin enviar, ofrecer guardarlo como borrador o descartarlo.
+async function onBack() {
+  if (!current && recorder.isEmpty) { go('gallery'); return; }
+  if (current?.sent) { await doSave(true); go('gallery'); return; }
+  const body = el('div');
+  const sh = sheet('¿Qué hacemos con este dibujo?', body);
+  const opt = (ic, title2, sub, fn) => el('button', { class: 'row tappable', style: { width: '100%' }, onclick: async () => { sh.close(); await fn(); } }, [el('div', { class: 'r-ic', html: icon(ic) }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title2 }), el('div', { class: 'r-sub', text: sub })])]);
+  body.append(
+    opt('save', 'Guardar como borrador', 'Podrás seguir editándolo después', async () => { await doSave(true); if (current) { current.draft = true; await db.put('drawings', current); } bus.emit('gallery:refresh'); toast('Guardado en borradores'); go('gallery'); }),
+    opt('trash', 'Descartar', 'Se elimina y no se guarda nada', async () => { if (current) await db.del('drawings', current.id).catch(() => {}); current = null; recorder.reset(); bus.emit('gallery:refresh'); go('gallery'); }),
+    opt('back', 'Seguir dibujando', 'Volver al lienzo', async () => {}),
+  );
 }
 async function loadInto(rec) {
   await engine.loadDoc(rec.doc);
@@ -274,7 +292,7 @@ function wireEngineEvents() {
 }
 
 function onToolButton(tool, btn) {
-  sound('tap'); haptic();
+  haptic(); // el sonido llega por el audio global de botones
   if (tool === 'shapes') return openShapes();
   if (tool === 'symmetry') return openSymmetry();
   if (tool === 'more-tools') return openMoreTools();
@@ -308,14 +326,25 @@ function refreshColorUI() {
 function refreshPalette() {
   const p = $('#st-palette'); if (!p) return;
   p.innerHTML = '';
-  engine.recentColors.forEach((c) => {
-    const b = el('button', { class: 'st-swatch' + (c === engine.color ? ' active' : ''), style: { background: c }, onclick: () => { engine.setColor(c); refreshColorUI(); refreshPalette(); } });
+  const { favs, recent } = store.get().colors;
+  const seen = new Set();
+  const put = (c, fav) => {
+    if (seen.has(c)) return; seen.add(c);
+    const b = el('button', { class: 'st-swatch' + (c === engine.color ? ' active' : '') + (fav ? ' fav' : ''), style: { background: c }, onclick: () => { engine.setColor(c); refreshColorUI(); refreshPalette(); } });
     p.append(b);
-  });
+  };
+  favs.forEach((c) => put(c, true));
+  [...engine.recentColors, ...recent].forEach((c) => put(c, false));
 }
 
 // ---------- Save ----------
-function scheduleSave() { clearTimeout(saveTimer); const st = $('#st-save'); saveTimer = setTimeout(() => doSave(false), 1400); }
+function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(() => doSave(false), 1400); }
+// Historial de colores recientes persistente (se comparte entre sesiones).
+bus.on('engine:recent', (list) => {
+  const prev = store.get().colors.recent;
+  const merged = [...list, ...prev].filter((c, i, a) => a.indexOf(c) === i).slice(0, 14);
+  store.set('colors', { recent: merged });
+});
 async function doSave(showState) {
   if (recorder.isEmpty && !current) return;
   const now = Date.now();
@@ -372,11 +401,31 @@ function openColorWheel() {
   const preview = el('div', { class: 'color-preview-big', style: { background: engine.color } });
   const hexIn = el('input', { class: 'input hex-input', value: engine.color, maxlength: 7 });
   hexIn.oninput = () => { if (/^#[0-9a-fA-F]{6}$/.test(hexIn.value)) { engine.setColor(hexIn.value); wheel.set(hexIn.value); preview.style.background = hexIn.value; refreshColorUI(); } };
-  // pastel presets
-  const presets = ['#ef92a6', '#f7b7c4', '#ffd9e4', '#cbb6e8', '#a98fd4', '#b8e0d2', '#8fd4bb', '#ffd7bd', '#ffcaa0', '#bcd8f2', '#fdeec2', '#5a4e58', '#ffffff', '#2a2530'];
-  const pal = el('div', { class: 'st-palette', style: { flexWrap: 'wrap', justifyContent: 'center' } });
-  presets.forEach((c) => pal.append(el('button', { class: 'st-swatch', style: { background: c }, onclick: () => { engine.setColor(c); wheel.set(c); preview.style.background = c; hexIn.value = c; refreshColorUI(); refreshPalette(); } })));
-  wrap.append(wheel.node, preview, el('div', { class: 'field', style: { width: '100%' } }, [hexIn]), pal);
+  // Favorito: guarda/quita el color actual con una estrella.
+  const favBtn = el('button', { class: 'btn btn-soft btn-sm', text: 'Guardar en favoritos', onclick: () => {
+    const cs = store.get().colors;
+    const favs = cs.favs.includes(engine.color) ? cs.favs.filter((c) => c !== engine.color) : [engine.color, ...cs.favs].slice(0, 12);
+    store.set('colors', { favs });
+    favBtn.textContent = favs.includes(engine.color) ? 'Quitar de favoritos' : 'Guardar en favoritos';
+    paintRows(); refreshPalette();
+  } });
+  const rows2 = el('div', { style: { width: '100%' } });
+  const paintRows = () => {
+    rows2.innerHTML = '';
+    const { favs, recent } = store.get().colors;
+    const mkRow = (label, list) => {
+      if (!list.length) return;
+      rows2.append(el('div', { class: 'lab', style: { fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-2)', margin: '10px 0 6px' }, text: label }));
+      const r = el('div', { class: 'st-palette', style: { flexWrap: 'wrap' } });
+      list.forEach((c) => r.append(el('button', { class: 'st-swatch', style: { background: c }, onclick: () => { engine.setColor(c); wheel.set(c); preview.style.background = c; hexIn.value = c; refreshColorUI(); refreshPalette(); } })));
+      rows2.append(r);
+    };
+    mkRow('Favoritos', favs);
+    mkRow('Recientes', recent);
+    mkRow('Pasteles', ['#e8899e', '#f2a9b8', '#fbdde6', '#c9b5e6', '#a68fd0', '#b7dccb', '#8fbca4', '#f7d4bc', '#bcd4ec', '#f6e8c6', '#5a4e58', '#ffffff']);
+  };
+  paintRows();
+  wrap.append(wheel.node, preview, el('div', { class: 'field', style: { width: '100%' } }, [hexIn]), favBtn, rows2);
   sheet(t('studio.color'), wrap);
 }
 
@@ -414,11 +463,11 @@ function switchEl(checked, onChange) {
 
 function openShapes() {
   const body = el('div', { class: 'grid-auto' });
-  const shapes = [['line', 'Línea', icon('line')], ['rect', 'Rectángulo', ''], ['ellipse', 'Círculo', ''], ['triangle', 'Triángulo', ''], ['star', 'Estrella', ''], ['polygon', 'Polígono', '']];
+  const shapes = [['line', 'Línea'], ['rect', 'Rectángulo'], ['ellipse', 'Círculo'], ['triangle', 'Triángulo'], ['star', 'Estrella'], ['polygon', 'Polígono'], ['heart', 'Corazón']];
   const s = sheet(t('studio.shapes') || 'Figuras', body);
   shapes.forEach(([id, name]) => {
     const b = el('button', { class: 'tile', style: { padding: '16px', textAlign: 'center' }, onclick: () => { engine.setTool(id); refreshToolUI(); s.close(); } }, [
-      el('div', { style: { fontSize: '1.6rem' }, text: { line: '╱', rect: '▭', ellipse: '◯', triangle: '△', star: '✦', polygon: '⬡' }[id] }),
+      el('div', { style: { fontSize: '1.6rem' }, text: { line: '╱', rect: '▭', ellipse: '◯', triangle: '△', star: '✦', polygon: '⬡', heart: '♡' }[id] }),
       el('div', { class: 'meta', html: `<div class="t">${name}</div>` }),
     ]);
     body.append(b);
@@ -568,16 +617,15 @@ function openMedia() {
   const tabs = el('div', { class: 'segment', style: { display: 'flex', width: '100%', marginBottom: '12px' } });
   const panel = el('div');
   const s = sheet(t('studio.media'), body);
-  const tabDefs = [['gif', 'GIFs'], ['image', 'Imagen'], ['text', 'Texto'], ['emoji', 'Emoji'], ['sticker', 'Stickers']];
+  const tabDefs = [['text', 'Añadir texto'], ['gif', 'GIFs'], ['image', 'Imagen'], ['sticker', 'Stickers']];
   tabDefs.forEach(([id, label], i) => tabs.append(el('button', { class: i === 0 ? 'active' : '', text: label, onclick: (e) => { tabs.querySelectorAll('button').forEach((b) => b.classList.remove('active')); e.target.classList.add('active'); showTab(id); } })));
   body.append(tabs, panel);
-  showTab('gif');
+  showTab('text');
   function showTab(id) {
     panel.innerHTML = '';
     if (id === 'gif') return gifTab(panel, s);
     if (id === 'image') { pickImageFile((src) => { addImageMedia(src, 'image'); s.close(); }); return; }
     if (id === 'text') return textTab(panel, s);
-    if (id === 'emoji') return emojiTab(panel, s, 'emoji');
     if (id === 'sticker') return emojiTab(panel, s, 'sticker');
   }
 }
@@ -589,12 +637,33 @@ function gifTab(panel, s) {
   let tmr; input.oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => load(input.value.trim()), 400); };
   load('bear love'); // el buscador siempre inicia con "bear love" 🐻💕
 }
+const TEXT_FONTS = [
+  ['Nunito, sans-serif', 'Redonda'],
+  ['Georgia, serif', 'Elegante'],
+  ['"Comic Sans MS", "Segoe Print", cursive', 'Manuscrita'],
+  ['"Courier New", monospace', 'Máquina'],
+];
 function textTab(panel, s) {
-  const ta = el('textarea', { class: 'textarea', placeholder: 'Escribe algo bonito…' });
+  const ta = el('textarea', { class: 'textarea', placeholder: 'Escribe algo bonito…', style: { fontSize: '1.1rem' } });
   const colorIn = el('input', { type: 'color', value: engine.color, style: { width: '48px', height: '40px', border: 'none', background: 'none' } });
-  const sizeSl = el('input', { class: 'slider', type: 'range', min: 16, max: 120, value: 48 });
-  panel.append(el('div', { class: 'field' }, [ta]), el('div', { class: 'row', style: { background: 'var(--surface-inset)', borderRadius: 'var(--r-md)' } }, [el('span', { text: 'Color' }), colorIn, el('div', { style: { flex: 1 } }, [sizeSl])]),
-    el('button', { class: 'btn btn-primary btn-block', style: { marginTop: '12px' }, text: 'Añadir texto', onclick: () => { if (!ta.value.trim()) return; engine.addMedia({ type: 'text', text: ta.value, color: colorIn.value, fontSize: +sizeSl.value, x: engine.docW / 2 - 100, y: engine.docH / 2 - 30, w: 200, h: 60, rot: 0, opacity: 1 }); s.close(); } }));
+  const sizeSl = el('input', { class: 'slider', type: 'range', min: 20, max: 160, value: 56 });
+  let font = TEXT_FONTS[0][0];
+  const fonts = el('div', { class: 'scroll-x', style: { margin: '10px 0' } });
+  TEXT_FONTS.forEach(([f, label], i) => fonts.append(el('button', { class: 'chip' + (i === 0 ? ' active' : ''), text: label, style: { fontFamily: f }, onclick: (e) => { font = f; fonts.querySelectorAll('.chip').forEach((c) => c.classList.remove('active')); e.target.classList.add('active'); ta.style.fontFamily = f; } })));
+  panel.append(el('div', { class: 'field' }, [ta]), fonts,
+    el('div', { class: 'row', style: { background: 'var(--surface-inset)', borderRadius: 'var(--r-md)' } }, [el('span', { text: 'Color' }), colorIn, el('div', { style: { flex: 1 } }, [sizeSl])]),
+    el('button', { class: 'btn btn-primary btn-block btn-lg', style: { marginTop: '12px' }, text: 'Añadir texto', onclick: () => {
+      const txt = ta.value.trim(); if (!txt) return;
+      const fs = +sizeSl.value;
+      // Medimos el texto real para que el cuadro se ajuste sin deformarse.
+      const meas = document.createElement('canvas').getContext('2d');
+      meas.font = `${fs}px ${font}`;
+      const lines = txt.split('\n');
+      const w = Math.max(...lines.map((l) => meas.measureText(l).width)) + 24;
+      const h = lines.length * fs * 1.25 + 16;
+      engine.addMedia({ type: 'text', text: txt, color: colorIn.value, font, fontSize: fs, x: (engine.docW - w) / 2, y: (engine.docH - h) / 2, w, h, rot: 0, opacity: 1 });
+      s.close();
+    } }));
 }
 function emojiTab(panel, s, type) {
   const emojis = type === 'emoji'
@@ -617,37 +686,123 @@ function pickImageFile(cb) {
   inp.click();
 }
 
-// ---------- Media overlay (drag/resize/rotate on canvas) ----------
+// ---------- Objetos en el lienzo: interfaz de edición renovada ----------
+// Seleccionar un objeto muestra asas + una barra contextual con duplicar,
+// opacidad, sombra, animación, editar (texto), pausar (GIF) y eliminar.
+// El pellizco con dos dedos sobre el objeto escala y rota sin dibujar.
 let selectedMediaId = null;
 function renderMediaOverlay(media) {
   const layer = engine.mediaLayer; if (!layer) return;
   layer.innerHTML = '';
   media.forEach((m) => {
-    const obj = el('div', { class: 'media-obj' + (m.id === selectedMediaId ? ' selected' : ''), style: { left: m.x + 'px', top: m.y + 'px', width: m.w + 'px', height: m.h + 'px', transform: `rotate(${m.rot || 0}deg)`, opacity: m.opacity ?? 1 } });
+    const obj = el('div', { class: 'media-obj' + (m.id === selectedMediaId ? ' selected' : '') + (m.anim ? ' anim-' + m.anim : ''), style: { left: m.x + 'px', top: m.y + 'px', width: m.w + 'px', height: m.h + 'px', transform: `rotate(${m.rot || 0}deg)`, opacity: m.opacity ?? 1, filter: m.shadow ? 'drop-shadow(0 10px 18px rgba(60,40,60,0.35))' : '' } });
     if (m.type === 'text') obj.append(el('div', { class: 'txt', style: { fontSize: (m.fontSize || 40) + 'px', color: m.color || 'inherit', fontFamily: m.font || 'Nunito, sans-serif' }, text: m.text }));
-    else obj.append(el('img', { src: m._img ? (m._img.src) : m.src }));
+    else obj.append(el('img', { src: m.paused && m._still ? m._still : (m._img ? m._img.src : m.src) }));
     if (m.id === selectedMediaId) {
       obj.append(
         el('div', { class: 'handle del', html: icon('close'), onpointerdown: (e) => { e.stopPropagation(); engine.removeMedia(m.id); selectedMediaId = null; } }),
         el('div', { class: 'handle br', onpointerdown: (e) => startResize(e, m) }),
         el('div', { class: 'handle rot', onpointerdown: (e) => startRotate(e, m) }),
       );
+      layer.append(objContextBar(m));
     }
-    obj.addEventListener('pointerdown', (e) => { if (e.target.classList.contains('handle')) return; selectedMediaId = m.id; startDrag(e, m); renderMediaOverlay(engine.media); });
+    // Arrastre + pellizco de dos dedos sobre el objeto.
+    const touches = new Map();
+    obj.addEventListener('pointerdown', (e) => {
+      if (e.target.classList.contains('handle')) return;
+      e.stopPropagation();
+      obj.setPointerCapture(e.pointerId);
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 2) { startPinch(m, touches); return; }
+      if (selectedMediaId !== m.id) { selectedMediaId = m.id; import('../core/sounds.js').then((x) => x.playFx('select')); renderMediaOverlay(engine.media); return; }
+      startDrag(e, m);
+    });
+    obj.addEventListener('pointermove', (e) => { if (touches.has(e.pointerId)) { touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (touches.size === 2) updatePinch(m, touches); } });
+    const endT = (e) => { touches.delete(e.pointerId); if (touches.size < 2) pinchState = null; };
+    obj.addEventListener('pointerup', endT);
+    obj.addEventListener('pointercancel', endT);
     layer.append(obj);
   });
+}
+
+// Barra contextual flotante sobre el objeto seleccionado.
+function objContextBar(m) {
+  const bar = el('div', { class: 'obj-bar', style: { left: (m.x + m.w / 2) + 'px', top: Math.max(8, m.y - 84) + 'px' } });
+  const btn = (ic, label, fn) => el('button', { class: 'ob-btn', html: icon(ic), title: label, 'aria-label': label, onclick: (e) => { e.stopPropagation(); fn(); } });
+  bar.append(
+    btn('dup', 'Duplicar', () => { const copy = { ...m, id: undefined, x: m.x + 30, y: m.y + 30 }; delete copy._img; delete copy._still; const nm = engine.addMedia(copy); if (m._img) nm._img = m._img; selectedMediaId = nm.id; renderMediaOverlay(engine.media); }),
+    btn('sparkle', 'Animar', () => objAnimSheet(m)),
+    btn('sun', 'Estilo', () => objStyleSheet(m)),
+  );
+  if (m.type === 'text') bar.append(btn('pen', 'Editar texto', async () => { const txt = await promptDialog({ title: 'Editar texto', value: m.text }); if (txt != null && txt.trim()) { m.text = txt; engine.renderMedia(); engine.markDirty(); } }));
+  if (m.type === 'gif') bar.append(btn(m.paused ? 'playFilled' : 'pauseFilled', m.paused ? 'Reproducir' : 'Pausar', () => toggleGifPause(m)));
+  bar.append(btn('trash', 'Eliminar', () => { engine.removeMedia(m.id); selectedMediaId = null; }));
+  bar.addEventListener('pointerdown', (e) => e.stopPropagation());
+  return bar;
+}
+function objAnimSheet(m) {
+  const body = el('div');
+  const sh = sheet('Animación del objeto', body);
+  [['', 'Sin animación'], ['float', 'Flotar'], ['pulse', 'Latido'], ['spin', 'Girar'], ['sway', 'Mecerse']].forEach(([id, label]) => {
+    body.append(el('button', { class: 'row tappable', style: { width: '100%' }, onclick: () => { m.anim = id || null; engine.renderMedia(); engine.markDirty(); sh.close(); } }, [el('div', { class: 'r-ic', html: icon('sparkle') }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: label })]), (m.anim || '') === id ? el('span', { class: 'pill warm', text: 'Activa' }) : null]));
+  });
+}
+function objStyleSheet(m) {
+  const body = el('div');
+  const sh = sheet('Estilo del objeto', body);
+  const opVal = el('span', { class: 'val', text: Math.round((m.opacity ?? 1) * 100) + '%' });
+  const op = el('input', { class: 'slider', type: 'range', min: 10, max: 100, value: Math.round((m.opacity ?? 1) * 100) });
+  op.oninput = () => { m.opacity = +op.value / 100; opVal.textContent = op.value + '%'; engine.renderMedia(); engine.markDirty(); };
+  const shadowIn = el('input', { type: 'checkbox' }); shadowIn.checked = !!m.shadow;
+  shadowIn.onchange = () => { m.shadow = shadowIn.checked; engine.renderMedia(); engine.markDirty(); };
+  body.append(
+    el('div', { class: 'opt-group' }, [el('div', { class: 'lab' }, [el('span', { text: 'Opacidad' }), opVal]), op]),
+    el('div', { class: 'row', style: { background: 'var(--surface-inset)', borderRadius: 'var(--r-md)' } }, [el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: 'Sombra suave' })]), el('label', { class: 'switch' }, [shadowIn, el('span', { class: 'track' })])]),
+  );
+}
+// GIF: pausa congelando el cuadro actual en un canvas (rendimiento y calma).
+function toggleGifPause(m) {
+  if (!m.paused) {
+    try {
+      const img = engine.mediaLayer.querySelector('.media-obj.selected img');
+      const c = document.createElement('canvas'); c.width = img.naturalWidth || 200; c.height = img.naturalHeight || 200;
+      c.getContext('2d').drawImage(img, 0, 0);
+      m._still = c.toDataURL(); m.paused = true;
+    } catch { m.paused = true; }
+  } else { m.paused = false; }
+  renderMediaOverlay(engine.media);
+}
+// Pellizco de dos dedos sobre un objeto: escala + rotación naturales.
+let pinchState = null;
+function startPinch(m, touches) {
+  const pts = [...touches.values()];
+  pinchState = { d0: Math.max(10, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)), a0: Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x), w0: m.w, h0: m.h, rot0: m.rot || 0, fs0: m.fontSize || 40 };
+}
+function updatePinch(m, touches) {
+  if (!pinchState) return;
+  const pts = [...touches.values()];
+  const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  const a = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
+  const k = d / pinchState.d0;
+  const cx = m.x + m.w / 2, cy = m.y + m.h / 2;
+  m.w = Math.max(24, pinchState.w0 * k); m.h = Math.max(24, pinchState.h0 * k);
+  if (m.type === 'text') m.fontSize = Math.max(10, pinchState.fs0 * k);
+  m.x = cx - m.w / 2; m.y = cy - m.h / 2;
+  m.rot = pinchState.rot0 + (a - pinchState.a0) * 180 / Math.PI;
+  renderMediaOverlay(engine.media);
+  engine.markDirty();
 }
 function docScale() { return engine.baseScale * engine.zoom; }
 function startDrag(e, m) {
   e.stopPropagation(); const sx = e.clientX, sy = e.clientY, ox = m.x, oy = m.y, sc = docScale();
   const move = (ev) => { m.x = ox + (ev.clientX - sx) / sc; m.y = oy + (ev.clientY - sy) / sc; renderMediaOverlay(engine.media); };
-  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); engine.markDirty(); };
+  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); engine.markDirty(); import('../core/sounds.js').then((x) => x.playFx('move')); };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
 }
 function startResize(e, m) {
-  e.stopPropagation(); const sx = e.clientX, sy = e.clientY, ow = m.w, oh = m.h, ratio = m.h / m.w, sc = docScale();
-  const move = (ev) => { const nw = Math.max(20, ow + (ev.clientX - sx) / sc); m.w = nw; m.h = m.type === 'text' ? nw * (oh / ow) : nw * ratio; if (m.type === 'text') m.fontSize = (m.fontSize || 40) * (nw / ow) / 1; renderMediaOverlay(engine.media); };
-  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); engine.markDirty(); };
+  e.stopPropagation(); const sx = e.clientX, sy = e.clientY, ow = m.w, oh = m.h, ratio = m.h / m.w, fs0 = m.fontSize || 40, sc = docScale();
+  const move = (ev) => { const nw = Math.max(20, ow + (ev.clientX - sx) / sc); m.w = nw; m.h = nw * ratio; if (m.type === 'text') m.fontSize = fs0 * (nw / ow); renderMediaOverlay(engine.media); };
+  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); engine.markDirty(); import('../core/sounds.js').then((x) => x.playFx('transform')); };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
 }
 function startRotate(e, m) {
@@ -713,8 +868,7 @@ function openMenu() {
   body.append(
     item('pen', t('common.rename'), async () => { const n = await promptDialog({ title: t('common.rename'), value: $('#st-title').textContent }); if (n) { $('#st-title').textContent = n; if (current) { current.title = n; } engine.markDirty(); doSave(true); } }),
     item('share', t('common.share'), shareDrawing),
-    item('send', 'Enviar a mi pareja', () => sendToPartner(false)),
-    item('secret', 'Enviar como secreto', () => sendToPartner(true)),
+    item('send', 'Enviar a mi pareja', openSendSheet),
     item('image', t('studio.export'), () => { downloadDataURL(engine.flatten().toDataURL('image/png'), (current?.title || 'dibujo') + '.png'); toast(t('toast.exported')); }),
     item('dup', t('common.duplicate'), duplicateDrawing),
     item('trash', t('studio.clear'), async () => { if (await confirmDialog({ title: t('studio.clear'), message: '¿Vaciar el lienzo actual?', danger: true })) { engine.stack.active.clear(); engine.requestComposite(); engine.markDirty(); toast(t('toast.cleared')); } }),
@@ -728,11 +882,34 @@ async function shareDrawing() {
   }
   downloadDataURL(url, 'dibujo.png'); toast('Imagen lista para compartir');
 }
-async function sendToPartner(secret = false) {
+// Hoja de envío: vista previa del proceso, "Editable después" y modo secreto.
+async function openSendSheet() {
   await doSave(true);
-  const { sendDrawingToPartner } = await import('./chat.js');
-  await sendDrawingToPartner(current, { secret });
-  toast(secret ? 'Enviado en secreto' : t('toast.sent')); sound('send');
+  if (!current) { toast('Dibuja algo primero'); return; }
+  const body = el('div');
+  const sh = sheet('Enviar a mi pareja', body);
+  body.append(el('img', { src: current.thumb, style: { width: '60%', margin: '0 auto 12px', display: 'block', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-md)' } }));
+  // Visualizar: solo aparece aquí, en el momento de enviar.
+  body.append(el('button', { class: 'btn btn-ghost btn-block', style: { marginBottom: '12px' }, html: icon('play') + ' Visualizar antes de enviar', onclick: () => openPlayer({ doc: engine.serialize(), recording: recorder.serialize(), title: current?.title }) }));
+  let editable = false, secret = false;
+  const mkTog = (title2, sub, on) => {
+    const input = el('input', { type: 'checkbox' }); input.onchange = () => on(input.checked);
+    return el('div', { class: 'row', style: { background: 'var(--surface-inset)', borderRadius: 'var(--r-md)', marginBottom: '8px' } }, [el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title2 }), el('div', { class: 'r-sub', text: sub })]), el('label', { class: 'switch' }, [input, el('span', { class: 'track' })])]);
+  };
+  body.append(
+    mkTog('Editable después', 'Si lo activas, podrás seguir editándolo tras enviarlo', (v) => editable = v),
+    mkTog('Dibujo secreto', 'Llega oculto; se revela solo al tocarlo', (v) => secret = v),
+    el('button', { class: 'btn btn-primary btn-block btn-lg', style: { marginTop: '10px' }, html: icon('send') + ' Enviar', onclick: async () => {
+      sh.close();
+      current.sent = true; current.editableAfter = editable; current.draft = false;
+      if (secret) current.secret = true;
+      await db.put('drawings', current);
+      const { sendDrawingToPartner } = await import('./chat.js');
+      await sendDrawingToPartner(current, { secret });
+      toast(secret ? 'Enviado en secreto' : t('toast.sent')); sound('send');
+      bus.emit('gallery:refresh');
+    } }),
+  );
 }
 async function duplicateDrawing() {
   await doSave(true);

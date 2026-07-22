@@ -11,6 +11,7 @@ import { sync } from './core/sync.js';
 import { bus } from './core/bus.js';
 import { toast } from './core/ui.js';
 import { fb } from './core/firebase.js';
+import { initGlobalButtonAudio } from './core/sounds.js';
 
 // Vistas
 import { renderStudio } from './ui/studio.js';
@@ -38,6 +39,7 @@ async function boot() {
   register('onboarding', renderOnboarding);
 
   initTabbar();
+  initGlobalButtonAudio();
 
   // Mostrar app y ocultar splash.
   $('#app').hidden = false;

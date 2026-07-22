@@ -29,9 +29,11 @@ export async function renderUs(ctx) {
   ]);
   view.append(header);
 
-  // Avatars pair
-  view.append(el('div', { class: 'card card-grad', style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', marginTop: '8px' } }, [
-    el('div', { class: 'avatar-pair' }, [avatar(s.profile, 'lg'), avatar(s.partner, 'lg')]),
+  // Héroe emocional: sus dos avatares unidos y el tiempo juntos, en grande.
+  view.append(el('div', { class: 'us-hero' }, [
+    el('div', { class: 'us-hero-glow' }),
+    el('div', { class: 'avatar-pair us-hero-avatars' }, [avatar(s.profile, 'lg'), avatar(s.partner, 'lg')]),
+    el('div', { class: 'us-hero-names', text: `${s.profile.name} & ${s.partner.name}` }),
     counterEl(),
   ]));
 
