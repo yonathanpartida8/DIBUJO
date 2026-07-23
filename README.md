@@ -5,6 +5,28 @@ distancia y en tiempo real. Interfaz premium en **español latino**, pastel
 refinado (no infantil), iconografía SVG profesional (sin emojis en la UI),
 inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
 
+## Novedades v6 (máxima calidad)
+
+- **Trazos continuos**: pluma, bolígrafo y borrador se renderizan como líneas
+  suaves reales (nada de "figuras unidas"); marcador/caligrafía con paso más
+  fino. Motor con `_beginStroke`/`_paintStep` y flag `direct`.
+- **Pinceles reales**: nuevos **Pincel plano** y **Difuminador** (arrastra el
+  pigmento ya pintado); cada uno con identidad propia.
+- **Lápiz virtual rehecho**: 1 dedo mueve el lápiz (nunca dibuja), 2 dedos
+  dibujan desde la punta, 3 dedos hacen zoom. Sin conflictos.
+- **Editor de texto completo**: color (arreglado), tamaño, fuente, grosor,
+  alineación, opacidad y espaciado, con vista previa en vivo.
+- **Visor de enviados** a pantalla completa con zoom por pellizco / doble
+  toque y desplazamiento; los dibujos enviados quedan bloqueados.
+- **Botón Enviar** en la barra + **animación cinematográfica** (partículas,
+  anillo, desenfoque, iluminación) con **sonido intercambiable**
+  (`Audio/UI/send-special`).
+- **Música**: se detiene y libera el audio al salir del editor.
+- **Control de grosor compacto** (barra fina + número), **iconos únicos**
+  por herramienta, **recuerdos más dinámicos** (2.6 s) y salida del editor
+  con Guardar borrador / Salir sin guardar / Cancelar (bug de re-guardado
+  corregido).
+
 ## Novedades v5.1 (correcciones reportadas)
 
 - **Bloqueado el zoom accidental del navegador** (causa de que la app se

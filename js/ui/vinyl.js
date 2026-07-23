@@ -55,6 +55,19 @@ export function togglePlay() {
   state.playing ? a.pause() : a.play().catch(() => {});
 }
 
+// Detiene TODA la música y libera los recursos de audio (al salir del editor).
+export function stopAllMusic() {
+  try {
+    if (state.audio) { state.audio.pause(); state.audio.removeAttribute('src'); state.audio.load(); }
+  } catch {}
+  try { srcNode?.disconnect(); analyser?.disconnect(); } catch {}
+  try { if (actx && actx.state !== 'closed') actx.close(); } catch {}
+  srcNode = analyser = actx = null;
+  state.audio = null; state.playing = false; state.track = null;
+  bus.emit('vinyl:state');
+  const mini = document.querySelector('.vinyl-mini'); if (mini) mini.hidden = true;
+}
+
 // ---------- Vista completa (overlay) ----------
 export async function openVinyl(initialTrack) {
   if (initialTrack) playTrack(initialTrack);

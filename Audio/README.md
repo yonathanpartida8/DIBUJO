@@ -11,6 +11,7 @@ síntesis integrada. No hay que configurar nada.
 - `pop-1` `pop-2` `pop-3` — aparición / burbuja
 - `love-1` `love-2` `love-3` — momentos románticos (revelar secreto, vincular)
 - `send-1` `send-2` `send-3` — enviar mensaje/dibujo
+- `send-special` — animación cinematográfica al enviar un dibujo
 - `receive-1` `receive-2` `receive-3` — recibir mensaje
 - `panel-open-1..3` / `panel-close-1..3` — abrir / cerrar paneles
 - `achieve-1` `achieve-2` — logro desbloqueado

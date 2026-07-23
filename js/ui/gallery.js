@@ -97,7 +97,7 @@ export async function renderGallery(ctx) {
       caption.querySelector('.ml-sub').textContent = `${who} · ${fmtDate(d.updatedAt || d.createdAt, getLang())}`;
     };
     show(pickNext());
-    liveTimer = setInterval(() => { if (!document.hidden) show(pickNext()); }, 3800);
+    liveTimer = setInterval(() => { if (!document.hidden) show(pickNext()); }, 2600);
     panel.onclick = () => { if (current) openDrawing(current); };
   }
 
@@ -246,18 +246,45 @@ export async function renderGallery(ctx) {
   }
 
   // Visor de solo lectura — imagen grande + proceso + duplicar como copia propia.
+  // Visor de solo lectura a pantalla completa: zoom por pellizco / doble toque
+  // y desplazamiento con un dedo. Nunca modifica el dibujo (queda bloqueado).
   function openViewer(d, isPartner) {
-    const body = el('div');
-    const sh = sheet(d.title || t('studio.untitled'), body);
-    body.append(el('img', { src: d.thumb, style: { width: '100%', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-md)' } }));
-    body.append(el('p', { style: { color: 'var(--text-3)', fontSize: '0.78rem', textAlign: 'center', margin: '10px 0' }, text: isPartner ? 'Dibujo de tu pareja — solo lectura' : 'Ya fue enviado — quedó sellado con amor' }));
-    const acts = el('div', { class: 'grid-2', style: { gap: '8px' } });
-    if (d.recording?.ops?.length) acts.append(el('button', { class: 'btn btn-ghost', html: icon('play') + ' Ver proceso', onclick: () => openPlayer({ doc: d.doc, recording: d.recording, title: d.title }) }));
-    acts.append(el('button', { class: 'btn btn-ghost', html: icon('dup') + ' Duplicar como mío', onclick: async () => {
+    const overlay = el('div', { class: 'viewer-overlay' });
+    const stage = el('div', { class: 'viewer-stage' });
+    const img = el('img', { class: 'viewer-img', src: d.thumb, alt: d.title || '' });
+    stage.append(img);
+    const top = el('div', { class: 'viewer-top' }, [
+      el('button', { class: 'icon-btn', html: icon('back'), onclick: close }),
+      el('div', { class: 'viewer-title', text: d.title || t('studio.untitled') }),
+      el('span', { class: 'pill', html: icon('lock'), style: { gap: '5px' } }),
+    ]);
+    const foot = el('div', { class: 'viewer-foot' });
+    if (d.recording?.ops?.length) foot.append(el('button', { class: 'btn btn-ghost btn-sm', html: icon('play') + ' Ver proceso', onclick: () => openPlayer({ doc: d.doc, recording: d.recording, title: d.title }) }));
+    foot.append(el('button', { class: 'btn btn-soft btn-sm', html: icon('dup') + ' Duplicar como mío', onclick: async () => {
       const copy = { ...structuredClone(d), id: uid('draw'), title: (d.title || 'Dibujo') + ' (copia)', createdAt: Date.now(), updatedAt: Date.now(), owner: 'me', received: false, sent: false, secret: false, favorite: false };
-      await db.put('drawings', copy); sh.close(); renderFeed(); toast('Copia creada — esa sí es tuya');
+      await db.put('drawings', copy); close(); renderFeed(); toast('Copia creada — esa sí es tuya');
     } }));
-    body.append(acts);
+    overlay.append(stage, top, foot);
+    document.body.append(overlay);
+    requestAnimationFrame(() => overlay.classList.add('in'));
+    function close() { overlay.classList.remove('in'); setTimeout(() => overlay.remove(), 240); }
+
+    // Transformación (pan + zoom) aplicada solo a la imagen.
+    let scale = 1, tx = 0, ty = 0;
+    const applyT = () => { img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; };
+    const pts = new Map(); let gesture = null, panStart = null;
+    stage.addEventListener('pointerdown', (e) => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); stage.setPointerCapture(e.pointerId);
+      if (pts.size === 2) { const a = [...pts.values()]; gesture = { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), s: scale, cx: (a[0].x + a[1].x) / 2, cy: (a[0].y + a[1].y) / 2, tx, ty }; panStart = null; }
+      else panStart = { x: e.clientX, y: e.clientY, tx, ty }; });
+    stage.addEventListener('pointermove', (e) => {
+      if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (gesture && pts.size >= 2) { const a = [...pts.values()]; const d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); scale = Math.max(1, Math.min(6, gesture.s * (d / gesture.d))); const c = (a[0].x + a[1].x) / 2, cy = (a[0].y + a[1].y) / 2; tx = gesture.tx + (c - gesture.cx); ty = gesture.ty + (cy - gesture.cy); applyT(); }
+      else if (panStart && scale > 1) { tx = panStart.tx + (e.clientX - panStart.x); ty = panStart.ty + (e.clientY - panStart.y); applyT(); }
+    });
+    const end = (e) => { pts.delete(e.pointerId); if (pts.size < 2) gesture = null; };
+    stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
+    let lastTap = 0;
+    img.addEventListener('click', () => { const now = Date.now(); if (now - lastTap < 300) { if (scale > 1) { scale = 1; tx = ty = 0; } else scale = 2.5; applyT(); } lastTap = now; });
   }
 
   async function cardMenu(d) {

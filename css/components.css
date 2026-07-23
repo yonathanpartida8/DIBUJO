@@ -697,3 +697,47 @@ body[data-theme="dark"] .us-hero { background: linear-gradient(150deg, #45303a, 
   cursor: grab;
 }
 .hc-mover:active { cursor: grabbing; border-style: solid; }
+
+/* ============================================================
+   v6 — Editor de texto, visor con zoom, envío cinematográfico
+   ============================================================ */
+.text-editor .te-row { display: flex; align-items: center; gap: 10px; }
+.te-color { width: 44px; height: 40px; border: none; background: none; border-radius: 12px; padding: 0; flex: none; }
+.te-swatches { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: 1; }
+.te-icon { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; background: var(--surface-inset); border: 1px solid var(--line); }
+.te-icon svg { width: 20px; height: 20px; fill: var(--text-2); stroke: var(--text-2); }
+.te-icon.active { background: var(--primary-soft); border-color: transparent; }
+.te-icon.active svg { fill: var(--her); stroke: var(--her); }
+
+/* Visor de solo lectura con zoom */
+.viewer-overlay { position: fixed; inset: 0; z-index: 1100; background: rgba(24,18,26,0.92); opacity: 0; transition: opacity var(--dur-2) var(--ease); display: flex; }
+.viewer-overlay.in { opacity: 1; }
+.viewer-stage { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; touch-action: none; }
+.viewer-img { max-width: 100%; max-height: 100%; border-radius: 8px; will-change: transform; transform-origin: center; transition: transform 0.06s linear; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.viewer-top { position: absolute; top: 0; left: 0; right: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: calc(var(--safe-t) + 12px) 14px 12px; background: linear-gradient(rgba(0,0,0,0.35), transparent); }
+.viewer-title { flex: 1; color: #fff; font-weight: 800; }
+.viewer-top .pill { background: rgba(255,255,255,0.18); color: #fff; }
+.viewer-top .pill svg { width: 14px; height: 14px; fill: #fff; }
+.viewer-foot { position: absolute; bottom: 0; left: 0; right: 0; z-index: 2; display: flex; gap: 10px; justify-content: center; padding: 14px 14px calc(var(--safe-b) + 18px); background: linear-gradient(transparent, rgba(0,0,0,0.4)); }
+
+/* Envío cinematográfico */
+.send-cine { position: fixed; inset: 0; z-index: 1300; display: grid; place-items: center; overflow: hidden; background: rgba(30,20,30,0); transition: background 0.5s var(--ease); }
+.send-cine.go { background: rgba(30,20,30,0.55); backdrop-filter: blur(6px); }
+.send-cine.out { opacity: 0; transition: opacity 0.4s var(--ease); }
+.sc-glow { position: absolute; width: 60vw; height: 60vw; border-radius: 50%; background: radial-gradient(circle, rgba(255,190,210,0.85), rgba(203,182,232,0.4) 45%, transparent 70%); filter: blur(20px); opacity: 0; transform: scale(0.4); }
+.send-cine.go .sc-glow { animation: scGlow 1.9s var(--ease-soft) forwards; }
+@keyframes scGlow { 0% { opacity: 0; transform: scale(0.4); } 35% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.5); } }
+.sc-ring { position: absolute; width: 180px; height: 180px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.7); opacity: 0; }
+.send-cine.go .sc-ring { animation: scRing 1.6s var(--ease) 0.2s forwards; }
+@keyframes scRing { 0% { opacity: 0.8; transform: scale(0.6); } 100% { opacity: 0; transform: scale(2.6); } }
+.sc-card { width: 190px; height: 240px; border-radius: 20px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.5); transform: translateY(30px) scale(0.7); opacity: 0; }
+.sc-card img { width: 100%; height: 100%; object-fit: cover; }
+.send-cine.go .sc-card { animation: scCard 1.9s var(--ease-soft) forwards; }
+@keyframes scCard { 0% { opacity: 0; transform: translateY(40px) scale(0.7); } 30% { opacity: 1; transform: translateY(0) scale(1); } 70% { opacity: 1; transform: translateY(-10px) scale(1.02) rotate(-1deg); } 100% { opacity: 0; transform: translateY(-90px) scale(0.5) rotate(4deg); filter: blur(4px); } }
+.sc-particles { position: absolute; inset: 0; pointer-events: none; }
+.sc-particles i { position: absolute; left: 50%; top: 50%; font-size: var(--sz); color: #fff; text-shadow: 0 0 10px rgba(255,180,205,0.9); opacity: 0; }
+.send-cine.go .sc-particles i { animation: scPart var(--d) var(--ease) var(--delay) forwards; }
+@keyframes scPart { 0% { opacity: 0; transform: translate(-50%,-50%) scale(0.2); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1); } }
+.sc-label { position: absolute; bottom: 22%; color: #fff; font-family: var(--font-round); font-weight: 800; font-size: 1.05rem; opacity: 0; }
+.send-cine.go .sc-label { animation: scLabel 1.9s var(--ease) forwards; }
+@keyframes scLabel { 0%,15% { opacity: 0; transform: translateY(8px); } 30% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }

@@ -136,6 +136,11 @@ const FX = {
     () => [523, 659, 784, 1047].forEach((f, i) => tone(f, { delay: i * 0.09, peak: 0.07, rel: 0.25 })),
     () => [587, 740, 880, 1175].forEach((f, i) => tone(f, { delay: i * 0.08, peak: 0.065, rel: 0.24 })),
   ] },
+  // Sonido especial del envío cinematográfico. Coloca tu archivo en
+  // Audio/UI/send-special.(wav|mp3) para cambiarlo sin tocar el código.
+  sendSpecial: { key: 'sndMsg', file: 'UI/send-special', variants: 1, synth: [
+    () => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, { delay: i * 0.08, peak: 0.06, rel: 0.5, type: 'sine' })); tone(392, { peak: 0.05, rel: 0.9, type: 'triangle', slide: 200 }); },
+  ] },
   save: { key: 'sndSave', file: 'UI/save', variants: 3, synth: [
     () => { tone(660, { peak: 0.05, rel: 0.1 }); tone(830, { delay: 0.06, peak: 0.05, rel: 0.18 }); },
     () => { tone(620, { peak: 0.05, rel: 0.1 }); tone(780, { delay: 0.06, peak: 0.05, rel: 0.17 }); },

@@ -87,5 +87,23 @@ export const ICONS = {
   secret: P('M12 3a7 7 0 00-7 7v2H4a1 1 0 00-1 1v7a1 1 0 001 1h16a1 1 0 001-1v-7a1 1 0 00-1-1h-1v-2a7 7 0 00-7-7zm-4 9v-2a4 4 0 118 0v2H8zm4 4v2.5', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
   sparkle: P('M12 2l1.8 5.7L19.5 9l-5.7 1.8L12 16.5l-1.8-5.7L4.5 9l5.7-1.3L12 2zM19 15l.9 2.6L22.5 18l-2.6.9L19 21.5l-.9-2.6L15.5 18l2.6-.9L19 15z', 'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"'),
   clock: P('M12 2a10 10 0 100 20 10 10 0 000-20zm0 5v5l3.5 2', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'),
+
+  /* ---- Herramientas de dibujo únicas (una identidad por pincel) ---- */
+  toolCharcoal: P('M7 3.5l10 4-9.5 13.5a2 2 0 01-1.7.9H3v-3l4-15.4zM6 8l9.5 3.8', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
+  toolChalk: P('M14.5 2.6l6.9 6.9a1.5 1.5 0 010 2.1L10.6 22.4H3v-7.6L13.8 3.9M12 5.7l6.3 6.3', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
+  toolCrayon: P('M8 2.5h8a1 1 0 011 1v3H7v-3a1 1 0 011-1zm-1 5.5h10l-1 12.5a1.5 1.5 0 01-1.5 1.4H9.5A1.5 1.5 0 018 20.5L7 8zm5-4.5v3', 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"'),
+  toolBall: P('M12 3.2c-1.1 1.9-2.4 3.6-2.4 5.5a2.4 2.4 0 004.8 0c0-1.9-1.3-3.6-2.4-5.5zM10.2 14.5h3.6l-.7 6a1.1 1.1 0 01-1.1 1 1.1 1.1 0 01-1.1-1l-.7-6z', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
+  toolPixelB: P('M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z', 'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"'),
+  toolFlat: P('M4 15.5l11-11a2 2 0 012.8 0l1.7 1.7a2 2 0 010 2.8l-11 11H4v-4.5zM3 21h8', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
+  toolSmudge: P('M12 3c-3 3.5-6 6.5-6 10a6 6 0 0012 0c0-1.4-.5-2.7-1.2-3.9M9 21c3 0 5-1.5 6.5-3.5', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
+  toolSplatter: P('M12 6.5a2 2 0 100-2.6M6.5 12a1.4 1.4 0 100-1.8M17.5 13a1.6 1.6 0 100-2M10 18a1.2 1.2 0 100-1.6M15 8.5a1 1 0 100-1.3M12.5 12.5a2.4 2.4 0 100-3', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"'),
+  toolPencilVirtual: P('M14.5 2.5l7 7-10 10-4 1.4a1 1 0 01-1.3-1.3L7.5 15.5l7-13zM6 22h6M12.5 4.5l5 5', 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"'),
+  bold: P('M6 4h7a4 4 0 010 8H6zm0 8h8a4 4 0 010 8H6z', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"'),
+  alignL: P('M4 6h16M4 12h11M4 18h14', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"'),
+  alignC: P('M4 6h16M7 12h10M5 18h14', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"'),
+  alignR: P('M4 6h16M9 12h11M6 18h14', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"'),
+  droplet: P('M12 3s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"'),
+  spacing: P('M4 7V5h16v2M4 17v2h16v-2M9 12h6M9 12l2-2M9 12l2 2M15 12l-2-2M15 12l-2 2', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"'),
+  zoomIn: P('M11 4a7 7 0 105.2 11.7l4.5 4.6M11 8v6M8 11h6', 'fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"'),
 };
 export const icon = (name) => ICONS[name] || '';

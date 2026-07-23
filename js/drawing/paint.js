@@ -30,6 +30,10 @@ export class StrokePainter {
     this.w = w; this.h = h;
     this.brush = BRUSHES[op.tool] || BRUSHES.pen;
     this.erase = !!this.brush.erase;
+    // "direct": pinta sobre la capa sin buffer (borrador y difuminador); el
+    // motor NO debe restaurar el snapshot cada frame para estos.
+    this.direct = this.erase || !!this.brush.smudge;
+    if (this.brush.smudge) { this.reset(); return; } // el difuminador no usa buffer
     if (!this.erase) {
       this.buffer = makeCanvas(w, h);
       this.bctx = this.buffer.getContext('2d');
@@ -74,8 +78,67 @@ export class StrokePainter {
       }
     }
   }
+  // Segmento de LÍNEA CONTINUA (pluma, bolígrafo, borrador…): nada de
+  // círculos encadenados — trazo suave con extremos y uniones redondeados.
+  _lineSegment(ctx, a, b, hex, alpha) {
+    const w = this._radius((a.p + b.p) / 2) * 2;
+    ctx.save();
+    ctx.strokeStyle = hex; ctx.globalAlpha = alpha;
+    ctx.lineWidth = Math.max(0.6, w);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.restore();
+  }
+  _lineSet(ctx, a, b, hex, alpha) {
+    this._lineSegment(ctx, a, b, hex, alpha);
+    const sym = this.op.sym;
+    if (!sym || sym.mode === 'none') return;
+    const ax = sym.ax ?? this.w / 2, ay = sym.ay ?? this.h / 2;
+    const mir = (fx, fy) => this._lineSegment(ctx, { x: fx(a.x, a.y), y: fy(a.x, a.y), p: a.p }, { x: fx(b.x, b.y), y: fy(b.x, b.y), p: b.p }, hex, alpha);
+    if (sym.mode === 'h' || sym.mode === 'hv') mir((x) => 2 * ax - x, (_, y) => y);
+    if (sym.mode === 'v' || sym.mode === 'hv') mir((x) => x, (_, y) => 2 * ay - y);
+    if (sym.mode === 'hv') mir((x) => 2 * ax - x, (_, y) => 2 * ay - y);
+    if (sym.mode === 'radial') {
+      const n = Math.max(2, sym.count || 6);
+      for (let i = 1; i < n; i++) {
+        const th = (i * 2 * Math.PI) / n, c = Math.cos(th), s = Math.sin(th);
+        const rot = (px, py) => ({ x: ax + (px - ax) * c - (py - ay) * s, y: ay + (px - ax) * s + (py - ay) * c });
+        const ra = rot(a.x, a.y), rb = rot(b.x, b.y);
+        this._lineSegment(ctx, { ...ra, p: a.p }, { ...rb, p: b.p }, hex, alpha);
+      }
+    }
+  }
+
+  // Difuminador REAL: arrastra los píxeles ya pintados de la capa en la
+  // dirección del trazo (como pasar el dedo sobre pastel fresco).
+  _smudgeStep(layerCtx, from, to) {
+    const r = this._radius(to.p) * 1.2;
+    const dx = to.x - from.x, dy = to.y - from.y;
+    layerCtx.save();
+    layerCtx.beginPath(); layerCtx.arc(to.x, to.y, r, 0, 7); layerCtx.clip();
+    layerCtx.globalAlpha = 0.42;
+    layerCtx.drawImage(layerCtx.canvas, dx * 0.55, dy * 0.55);
+    layerCtx.restore();
+  }
+
   // Add a point; draws dabs from previous point along the segment into buffer/layer.
   addPoint(pt, layerCtx) {
+    // Difuminador: opera directo sobre la capa, sin buffer ni color.
+    if (this.brush.smudge) {
+      if (this.last) this._smudgeStep(layerCtx, this.last, pt);
+      this.last = pt;
+      return;
+    }
+    // Pinceles de línea continua.
+    if (this.brush.smooth) {
+      const ctx = this.erase ? layerCtx : this.bctx;
+      if (this.erase) { ctx.save(); ctx.globalCompositeOperation = 'destination-out'; }
+      if (this.last) this._lineSet(ctx, this.last, pt, this.op.color, this.erase ? (this.op.opacity ?? 1) : 1);
+      else this._lineSet(ctx, pt, { ...pt, x: pt.x + 0.01 }, this.op.color, this.erase ? (this.op.opacity ?? 1) : 1);
+      if (this.erase) ctx.restore();
+      this.last = pt;
+      return;
+    }
     const target = this.erase ? layerCtx : this.bctx;
     if (this.erase) {
       layerCtx.save(); layerCtx.globalCompositeOperation = 'destination-out'; layerCtx.globalAlpha = this.op.opacity ?? 1;
@@ -104,7 +167,7 @@ export class StrokePainter {
   }
   // Composite the finished (or in-progress) stroke buffer onto the layer.
   compositeTo(layerCtx) {
-    if (this.erase) return; // already applied directly
+    if (this.erase || this.brush.smudge || !this.buffer) return; // aplicado directo
     layerCtx.save();
     layerCtx.globalAlpha = this.op.opacity ?? 1;
     layerCtx.globalCompositeOperation = (this.brush.blend || this.op.blend || 'normal') === 'normal' ? 'source-over' : (this.brush.blend || this.op.blend);

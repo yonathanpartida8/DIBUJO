@@ -104,7 +104,7 @@ export const BRUSHES = {
 
   /* ---------- MARCADORES ---------- */
   marker: {
-    id: 'marker', name: 'Marcador', cat: 'marker', size: 24, opacity: 0.55, spacing: 0.06,
+    id: 'marker', name: 'Marcador', cat: 'marker', size: 24, opacity: 0.55, spacing: 0.035,
     blend: 'multiply', noPressure: true,
     // Punta biselada plana: banda ancha, translúcida y uniforme que se
     // oscurece al superponer pasadas (multiply), como un marcador real.
@@ -123,12 +123,12 @@ export const BRUSHES = {
 
   /* ---------- PLUMAS (tinta nítida) ---------- */
   pen: {
-    id: 'pen', name: 'Pluma', cat: 'pen', size: 7, opacity: 1, spacing: 0.06,
+    id: 'pen', name: 'Pluma', cat: 'pen', size: 7, opacity: 1, spacing: 0.06, smooth: true,
     // Tinta limpia con borde nítido; la presión afina la línea.
     dab(ctx, x, y, r, hex, o) { hardDab(ctx, x, y, r, hex, o); },
   },
   ballpoint: {
-    id: 'ballpoint', name: 'Bolígrafo', cat: 'pen', size: 3.2, opacity: 0.95, spacing: 0.09,
+    id: 'ballpoint', name: 'Bolígrafo', cat: 'pen', size: 3.2, opacity: 0.9, spacing: 0.09, smooth: true,
     // Línea fina constante con pequeñas acumulaciones de tinta ocasionales.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
       hardDab(ctx, x, y, r * 0.9, hex, o * (0.8 + rng() * 0.2));
@@ -136,7 +136,7 @@ export const BRUSHES = {
     },
   },
   calligraphy: {
-    id: 'calligraphy', name: 'Caligrafía', cat: 'pen', size: 22, opacity: 1, spacing: 0.04, noPressure: true,
+    id: 'calligraphy', name: 'Caligrafía', cat: 'pen', size: 22, opacity: 1, spacing: 0.025, noPressure: true,
     // Plumilla ancha en ángulo fijo: contraste dramático entre subidas y bajadas.
     dab(ctx, x, y, r, hex, o) {
       chiselDab(ctx, x, y, r, r * 0.16, -0.6, hex, o);
@@ -145,7 +145,7 @@ export const BRUSHES = {
 
   /* ---------- PINCELES (húmedos) ---------- */
   brush: {
-    id: 'brush', name: 'Pincel', cat: 'brush', size: 20, opacity: 0.95, spacing: 0.06,
+    id: 'brush', name: 'Pincel redondo', cat: 'brush', size: 20, opacity: 0.95, spacing: 0.05,
     // Pincel redondo con borde suave y afinado marcado por presión.
     dab(ctx, x, y, r, hex, o, hard) { softDab(ctx, x, y, r, hex, o, hard ?? 0.72); },
   },
@@ -163,6 +163,25 @@ export const BRUSHES = {
       ctx.beginPath(); ctx.arc(x + jx, y + jy, r * (0.86 + rng() * 0.1), rng() * 6.28, rng() * 6.28 + 3.5); ctx.stroke();
       ctx.restore();
     },
+  },
+
+  flat: {
+    id: 'flat', name: 'Pincel plano', cat: 'brush', size: 26, opacity: 0.9, spacing: 0.03,
+    // Brocha plana: banda ancha orientada al trazo con cerdas secas en los bordes.
+    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
+      chiselDab(ctx, x, y, r * 0.38, r * 1.25, ang, hex, o);
+      // cerdas: pequeñas vetas en los extremos de la brocha
+      for (let i = 0; i < 3; i++) {
+        const off = (rng() - 0.5) * r * 2.3;
+        const px = x - Math.sin(ang) * off, py = y + Math.cos(ang) * off;
+        if (Math.abs(off) > r * 0.8) hardDab(ctx, px, py, 0.8, hex, o * 0.5 * rng());
+      }
+    },
+  },
+  smudge: {
+    id: 'smudge', name: 'Difuminador', cat: 'brush', size: 34, opacity: 1, spacing: 0.1, smudge: true,
+    // Arrastra el pigmento ya pintado (implementado en paint.js).
+    dab() {},
   },
 
   /* ---------- AERÓGRAFOS ---------- */
@@ -185,7 +204,7 @@ export const BRUSHES = {
 
   /* ---------- BORRADORES ---------- */
   eraser: {
-    id: 'eraser', name: 'Borrador', cat: 'erase', size: 20, opacity: 1, spacing: 0.1, erase: true,
+    id: 'eraser', name: 'Borrador', cat: 'erase', size: 22, opacity: 1, spacing: 0.1, erase: true, smooth: true,
     dab(ctx, x, y, r, hex, o) { hardDab(ctx, x, y, r, '#000', o); },
   },
   eraserSoft: {

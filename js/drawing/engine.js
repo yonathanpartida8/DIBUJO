@@ -210,8 +210,31 @@ export class Engine {
   _onDown(e) {
     if (this._playbackLock) return;
     this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // ---- Lápiz virtual: lógica multitáctil dedicada y estable ----
+    //   1 dedo  → SOLO mueve el lápiz (jamás dibuja).
+    //   2 dedos → comienza a dibujar desde la punta del lápiz.
+    //   3 dedos → zoom/desplazamiento del lienzo.
+    if (this.pencilMode) {
+      if (this._pointers.size === 1) {
+        this._drawPointerId = e.pointerId; // el primer dedo guía la punta
+        bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: false });
+        return; // sin trazo con un solo dedo
+      }
+      if (this._pointers.size === 2 && !this._drawing) {
+        // El segundo dedo activa la tinta: el trazo nace donde está la punta.
+        const guide = this._pointers.get(this._drawPointerId) || [...this._pointers.values()][0];
+        this._beginStroke(guide.x, guide.y, 1);
+        bus.emit('engine:pointer', { x: guide.x, y: guide.y, down: true });
+        return;
+      }
+      if (this._pointers.size >= 3) { this._endStrokeAbort(); this._gesture = this._startGesture(); return; }
+      return;
+    }
+
     if (this._pointers.size >= 2) { this._endStrokeAbort(); this._gesture = this._startGesture(); return; }
     if (this.tool === 'pan') return;
+    this._drawPointerId = e.pointerId;
     const layer = this.stack.active;
     if (layer.locked || !layer.visible) return;
     e.preventDefault();
@@ -221,9 +244,18 @@ export class Engine {
     if (this.tool === 'bucket') return this._doFill(pt);
     if (this.tool === 'eyedropper') return this._doPick(pt);
     if (['line', 'rect', 'ellipse', 'triangle', 'star', 'polygon', 'heart'].includes(this.tool)) { this._shapeStart = pt; return; }
-    // Regla inteligente: dibujas libre por todo el lienzo, pero cuando el
-    // trazo TOCA el borde de la regla se desliza siguiendo su dirección,
-    // exactamente como apoyar el lápiz contra una regla real.
+    this._beginStroke(e.clientX, e.clientY, this._pressure(e));
+    bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: true });
+  }
+
+  // Inicia un trazo en unas coordenadas de pantalla. Reutilizado por el dibujo
+  // normal (1 dedo) y por el lápiz virtual (2 dedos).
+  _beginStroke(clientX, clientY, pressure) {
+    const layer = this.stack.active;
+    if (layer.locked || !layer.visible) return false;
+    const pt = this.clientToDoc(clientX, clientY);
+    pt.p = pressure;
+    // Regla inteligente: el trazo se apoya en el borde de la regla al tocarlo.
     if (this.ruler) {
       const dirX = Math.cos(this.ruler.angle), dirY = Math.sin(this.ruler.angle);
       const nX = -dirY, nY = dirX;
@@ -231,12 +263,8 @@ export class Engine {
       this._rulerGuard = { px: this.ruler.px, py: this.ruler.py, dirX, dirY, nX, nY, side: d0 >= 0 ? 1 : -1 };
       Object.assign(pt, this._guardRuler(pt));
     } else this._rulerGuard = null;
-
-    // Hoja infinita: el grosor se adapta al zoom para que el trazo se vea
-    // coherente en pantalla aunque el aumento sea enorme.
+    // Hoja infinita: grosor coherente en pantalla aun con muchísimo zoom.
     const effSize = this.paper.infinite ? Math.max(0.5, this.brushSize / this.zoom) : this.brushSize;
-
-    // Brush stroke
     this._beforeSnapshot = layer.snapshot();
     this._smoothPt = { x: pt.x, y: pt.y, p: pt.p };
     const seed = (Math.random() * 2 ** 31) | 0;
@@ -248,55 +276,72 @@ export class Engine {
     };
     this._painter = new StrokePainter(this._op, this.docW, this.docH);
     this._painter.addPoint(this._smoothPt, layer.ctx);
-    this._painter.compositeTo(layer.ctx);
+    if (!this._painter.direct) this._painter.compositeTo(layer.ctx);
     this.requestComposite();
     this.recorder?.beginStroke(this._op);
     this.recorder?.addPoint(this._smoothPt.x, this._smoothPt.y, this._smoothPt.p);
     this._drawing = true;
-    bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: true });
     import('../core/sounds.js').then((m) => m.startScratch(this.tool));
+    return true;
   }
+
+  // Extiende el trazo activo hacia unas coordenadas de pantalla (con suavizado).
+  _paintStep(clientX, clientY, pressure) {
+    const raw = this.clientToDoc(clientX, clientY);
+    const k = 1 - (this.stabilizer * 0.7 + this.smoothing * 0.25);
+    this._smoothPt = {
+      x: this._smoothPt.x + (raw.x - this._smoothPt.x) * k,
+      y: this._smoothPt.y + (raw.y - this._smoothPt.y) * k,
+      p: pressure,
+    };
+    const drawPt = this._rulerGuard ? this._guardRuler(this._smoothPt) : this._smoothPt;
+    this._painter.addPoint(drawPt, this.stack.active.ctx);
+    this.recorder?.addPoint(drawPt.x, drawPt.y, drawPt.p);
+  }
+  _flushPaintFrame() {
+    const layer = this.stack.active;
+    if (!this._painter.direct) { layer.restore(this._beforeSnapshot); this._painter.compositeTo(layer.ctx); }
+    this.requestComposite();
+  }
+
   _onMove(e) {
     if (this._pointers.has(e.pointerId)) this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Lápiz virtual: mueve la punta con el primer dedo; dibuja solo con 2;
+    // zoom solo con 3. Nada de conflictos entre mover / dibujar / hacer zoom.
+    if (this.pencilMode) {
+      if (this._gesture && this._pointers.size >= 3) return this._updateGesture();
+      const guide = this._pointers.get(this._drawPointerId) || [...this._pointers.values()][0];
+      if (!guide) return;
+      bus.emit('engine:pointer', { x: guide.x, y: guide.y, down: this._drawing });
+      if (this._drawing && this._painter) { this._paintStep(guide.x, guide.y, 1); this._flushPaintFrame(); }
+      return;
+    }
+
     if (this._gesture && this._pointers.size >= 2) return this._updateGesture();
     if (this._shapeStart) return this._previewShape(this.clientToDoc(e.clientX, e.clientY));
     if (!this._drawing || !this._painter) return;
     e.preventDefault();
-    const layer = this.stack.active;
-    // Consume coalesced events for high-refresh smoothness (90/120/144/165 Hz).
+    // Eventos coalescidos para máxima suavidad a 90/120/144/165 Hz.
     const events = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
-    const k = 1 - (this.stabilizer * 0.7 + this.smoothing * 0.25); // smoothing/stabiliser factor
-    for (const ev of events) {
-      const raw = this.clientToDoc(ev.clientX, ev.clientY);
-      const p = this._pressure(ev);
-      this._smoothPt = {
-        x: this._smoothPt.x + (raw.x - this._smoothPt.x) * k,
-        y: this._smoothPt.y + (raw.y - this._smoothPt.y) * k,
-        p,
-      };
-      // Con regla activa, el trazo se apoya en su borde al tocarla.
-      const drawPt = this._rulerGuard ? this._guardRuler(this._smoothPt) : this._smoothPt;
-      // Incremental: paint the new segment into the stroke buffer (O(1) per point).
-      this._painter.addPoint(drawPt, layer.ctx);
-      this.recorder?.addPoint(drawPt.x, drawPt.y, drawPt.p);
-    }
-    // For buffered (non-erase) brushes, show the growing stroke at uniform opacity.
-    if (!this._painter.erase) {
-      layer.restore(this._beforeSnapshot);
-      this._painter.compositeTo(layer.ctx);
-    }
+    for (const ev of events) this._paintStep(ev.clientX, ev.clientY, this._pressure(ev));
+    this._flushPaintFrame();
     bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: true });
-    this.requestComposite();
   }
   _onUp(e) {
     this._pointers.delete(e.pointerId);
-    if (this._pointers.size < 2) this._gesture = null;
+    const gestureFloor = this.pencilMode ? 3 : 2;
+    if (this._pointers.size < gestureFloor) this._gesture = null;
+    // Lápiz virtual: al levantar un dedo baja de 2 → deja de dibujar limpio.
+    if (this.pencilMode && this._drawing && this._pointers.size < 2) { this._commitStroke(e); return; }
     if (this._shapeStart) { this._commitShape(this.clientToDoc(e.clientX, e.clientY)); this._shapeStart = null; return; }
     if (!this._drawing) return;
+    this._commitStroke(e);
+  }
+  _commitStroke(e) {
     this._drawing = false;
     const layer = this.stack.active;
-    if (this._painter && !this._painter.erase) { layer.restore(this._beforeSnapshot); this._painter.compositeTo(layer.ctx); }
-    // record history
+    if (this._painter && !this._painter.direct) { layer.restore(this._beforeSnapshot); this._painter.compositeTo(layer.ctx); }
     this.history.push({ type: 'layer', layerId: layer.id, before: this._beforeSnapshot, after: layer.snapshot() });
     this.recorder?.endStroke();
     if (this._op) bus.emit('engine:strokeDone', this._op);
@@ -462,7 +507,15 @@ export class Engine {
       for (const m of this.media) {
         ctx.save(); ctx.globalAlpha = m.opacity ?? 1;
         ctx.translate(m.x + m.w / 2, m.y + m.h / 2); ctx.rotate((m.rot || 0) * Math.PI / 180);
-        if (m.type === 'text' || m.type === 'emoji') { ctx.fillStyle = m.color || '#000'; ctx.font = `${m.fontSize || 40}px ${m.font || 'Nunito, sans-serif'}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(m.text, 0, 0); }
+        if (m.type === 'text' || m.type === 'emoji') {
+          ctx.fillStyle = m.color || '#000';
+          ctx.font = `${m.bold ? '800 ' : ''}${m.fontSize || 40}px ${m.font || 'Nunito, sans-serif'}`;
+          ctx.textAlign = m.align || 'center'; ctx.textBaseline = 'middle';
+          const lines = String(m.text).split('\n');
+          const lh = (m.fontSize || 40) * 1.25;
+          const ax = m.align === 'left' ? -m.w / 2 + 8 : m.align === 'right' ? m.w / 2 - 8 : 0;
+          lines.forEach((ln, i) => ctx.fillText(ln, ax, (i - (lines.length - 1) / 2) * lh));
+        }
         else if (m._img) { ctx.drawImage(m._img, -m.w / 2, -m.h / 2, m.w, m.h); }
         ctx.restore();
       }

@@ -19,15 +19,18 @@ import { RulerTool } from '../drawing/ruler.js';
 import { fb } from '../core/firebase.js';
 
 let engine, recorder, current, saveTimer, autosaveOff, ruler;
+let skipSaveOnLeave = false; // "Salir sin guardar" evita que leave() re-guarde
 
 // Icono SVG por herramienta (la UI no usa emojis).
 const TOOL_ICON = {
-  pencil: 'toolPencil', pen: 'toolPen', ballpoint: 'toolPen', marker: 'toolMarker',
-  brush: 'toolBrush', watercolor: 'toolWater', airbrush: 'toolSpray', splatter: 'toolSpray',
-  chalk: 'toolMarker', charcoal: 'toolPencil', crayon: 'toolMarker', pixel: 'toolPixel',
-  calligraphy: 'toolCallig', eraser: 'toolEraser', eraserSoft: 'toolEraser', eraserPixel: 'toolPixel',
+  pencil: 'toolPencil', charcoal: 'toolCharcoal', chalk: 'toolChalk', crayon: 'toolCrayon',
+  marker: 'toolMarker', pixel: 'toolPixelB',
+  pen: 'toolPen', ballpoint: 'toolBall', calligraphy: 'toolCallig',
+  brush: 'toolBrush', flat: 'toolFlat', watercolor: 'toolWater', smudge: 'toolSmudge',
+  airbrush: 'toolSpray', splatter: 'toolSplatter',
+  eraser: 'toolEraser', eraserSoft: 'droplet', eraserPixel: 'toolPixel',
   bucket: 'toolBucket', eyedropper: 'dropper', line: 'line', shapes: 'toolShapes',
-  symmetry: 'symmetry', 'ruler-tool': 'ruler', 'pencil-sim': 'toolPencil', 'more-tools': 'more',
+  symmetry: 'symmetry', 'ruler-tool': 'ruler', 'pencil-sim': 'toolPencilVirtual', 'more-tools': 'more',
 };
 
 // Herramientas por categoría (orden de la barra del editor).
@@ -36,7 +39,7 @@ const TOOL_CATS = [
   ['pencil', 'Lápices', ['pencil', 'charcoal', 'chalk', 'crayon']],
   ['marker', 'Marcadores', ['marker', 'pixel']],
   ['pen', 'Plumas', ['pen', 'ballpoint', 'calligraphy']],
-  ['brush', 'Pinceles', ['brush', 'watercolor']],
+  ['brush', 'Pinceles', ['brush', 'flat', 'watercolor', 'smudge']],
   ['spray', 'Aerógrafos', ['airbrush', 'splatter']],
   ['erase', 'Borradores', ['eraser', 'eraserSoft', 'eraserPixel']],
   ['other', 'Otras', ['bucket', 'eyedropper', 'line', 'shapes', 'symmetry', 'ruler-tool', 'pencil-sim', 'more-tools']],
@@ -104,11 +107,14 @@ export async function renderStudio(ctx) {
   return {
     leave: async () => {
       clearTimeout(saveTimer);
-      await doSave(true);
+      if (!skipSaveOnLeave) await doSave(true);
+      skipSaveOnLeave = false;
       autosaveOff?.(); offCollab?.(); offBroadcast?.(); offPointer?.();
       toolbarOff?.(); toolbarOff = null;
       fb.setDrawing?.(false);
       const { stopScratch } = await import('../core/sounds.js'); stopScratch();
+      // Detén TODA la música y libera el audio al salir del editor.
+      const { stopAllMusic } = await import('./vinyl.js'); stopAllMusic();
     },
   };
 
@@ -123,8 +129,9 @@ export async function renderStudio(ctx) {
       el('div', { class: 'save-state', id: 'st-save' }, [el('span', { class: 'rec-dot' }, [el('i'), 'REC ']), el('span', { id: 'st-timer', text: '0:00' })]),
     ]);
     const layers = el('button', { class: 'icon-btn', html: icon('layers'), onclick: openLayers });
+    const sendBtn = el('button', { class: 'icon-btn st-send', html: icon('send'), 'aria-label': 'Enviar', onclick: openSendSheet });
     const more = el('button', { class: 'icon-btn', html: icon('more'), onclick: openMenu });
-    bar.append(back, undo, redo, title, layers, more);
+    bar.append(back, undo, redo, title, layers, sendBtn, more);
     return bar;
   }
 
@@ -184,13 +191,16 @@ export async function renderStudio(ctx) {
   function buildDock() {
     const d = el('div', { class: 'st-dock' });
     const toolbar = buildToolbar();
-    const quick = el('div', { class: 'st-quick' });
+    // Control de grosor COMPACTO: una barra fina con la perilla y el valor; el
+    // dibujo respira y todo se ve minimalista. El deslizador vive inline pero
+    // ocupa poco; tocar el número abre las opciones completas del pincel.
+    const quick = el('div', { class: 'st-quick st-size-bar' });
     const swatch = el('button', { class: 'st-color-swatch', id: 'st-swatch', onclick: openColorWheel });
-    const sizePrev = el('div', { class: 'st-size-preview', onclick: openBrushOptions }, [el('i', { id: 'st-sizedot' })]);
-    const slider = el('input', { class: 'slider', type: 'range', min: 1, max: 200, value: engine.brushSize, id: 'st-size' });
-    slider.oninput = () => { engine.brushSize = +slider.value; updateSizeDot(); };
+    const slider = el('input', { class: 'slider slim', type: 'range', min: 1, max: 200, value: engine.brushSize, id: 'st-size' });
+    slider.oninput = () => { engine.brushSize = +slider.value; updateSizeDot(); const n = $('#st-sizenum'); if (n) n.textContent = slider.value; };
+    const sizeNum = el('button', { class: 'st-sizenum', id: 'st-sizenum', text: String(engine.brushSize), onclick: openBrushOptions });
     const brushBtn = el('button', { class: 'icon-btn', html: icon('pen'), onclick: openBrushPicker });
-    quick.append(swatch, sizePrev, el('div', { class: 'st-slider-wrap' }, [slider]), brushBtn);
+    quick.append(swatch, el('div', { class: 'st-slider-wrap' }, [slider]), sizeNum, brushBtn);
 
     const palette = el('div', { class: 'st-palette', id: 'st-palette' });
 
@@ -241,12 +251,12 @@ async function onBack() {
   if (!current && recorder.isEmpty) { go('gallery'); return; }
   if (current?.sent) { await doSave(true); go('gallery'); return; }
   const body = el('div');
-  const sh = sheet('¿Qué hacemos con este dibujo?', body);
-  const opt = (ic, title2, sub, fn) => el('button', { class: 'row tappable', style: { width: '100%' }, onclick: async () => { sh.close(); await fn(); } }, [el('div', { class: 'r-ic', html: icon(ic) }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title2 }), el('div', { class: 'r-sub', text: sub })])]);
+  const sh = sheet('¿Salir del dibujo?', body);
+  const opt = (ic, title2, sub, danger, fn) => el('button', { class: 'row tappable', style: { width: '100%', color: danger ? '#d66' : '' }, onclick: async () => { sh.close(); await fn(); } }, [el('div', { class: 'r-ic', html: icon(ic) }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title2 }), el('div', { class: 'r-sub', text: sub })])]);
   body.append(
-    opt('save', 'Guardar como borrador', 'Podrás seguir editándolo después', async () => { await doSave(true); if (current) { current.draft = true; await db.put('drawings', current); } bus.emit('gallery:refresh'); toast('Guardado en borradores'); go('gallery'); }),
-    opt('trash', 'Descartar', 'Se elimina y no se guarda nada', async () => { if (current) await db.del('drawings', current.id).catch(() => {}); current = null; recorder.reset(); bus.emit('gallery:refresh'); go('gallery'); }),
-    opt('back', 'Seguir dibujando', 'Volver al lienzo', async () => {}),
+    opt('save', 'Guardar como borrador', 'Podrás seguir editándolo después', false, async () => { await doSave(true); if (current) { current.draft = true; await db.put('drawings', current); } bus.emit('gallery:refresh'); toast('Guardado en borradores'); go('gallery'); }),
+    opt('logout', 'Salir sin guardar', 'Se descartan los cambios de este dibujo', true, async () => { skipSaveOnLeave = true; if (current && !current.sent) await db.del('drawings', current.id).catch(() => {}); current = null; recorder.reset(); bus.emit('gallery:refresh'); go('gallery'); }),
+    opt('back', 'Cancelar', 'Volver al lienzo', false, async () => {}),
   );
 }
 async function loadInto(rec) {
@@ -314,6 +324,10 @@ function refreshToolUI() {
   const core = $('#st-wheel-core'); if (core) core.style.background = engine.color;
 }
 function updateSizeDot() {
+  const num = $('#st-sizenum'); if (num) num.textContent = Math.round(engine.brushSize);
+  return _updateSizeDotLegacy();
+}
+function _updateSizeDotLegacy() {
   const dot = $('#st-sizedot'); if (!dot) return;
   const s = Math.max(3, Math.min(34, engine.brushSize * 0.7));
   dot.style.width = s + 'px'; dot.style.height = s + 'px'; dot.style.background = engine.color;
@@ -696,7 +710,7 @@ function renderMediaOverlay(media) {
   layer.innerHTML = '';
   media.forEach((m) => {
     const obj = el('div', { class: 'media-obj' + (m.id === selectedMediaId ? ' selected' : '') + (m.anim ? ' anim-' + m.anim : ''), style: { left: m.x + 'px', top: m.y + 'px', width: m.w + 'px', height: m.h + 'px', transform: `rotate(${m.rot || 0}deg)`, opacity: m.opacity ?? 1, filter: m.shadow ? 'drop-shadow(0 10px 18px rgba(60,40,60,0.35))' : '' } });
-    if (m.type === 'text') obj.append(el('div', { class: 'txt', style: { fontSize: (m.fontSize || 40) + 'px', color: m.color || 'inherit', fontFamily: m.font || 'Nunito, sans-serif' }, text: m.text }));
+    if (m.type === 'text') obj.append(el('div', { class: 'txt', style: { fontSize: (m.fontSize || 40) + 'px', color: m.color || 'inherit', fontFamily: m.font || 'Nunito, sans-serif', fontWeight: m.bold ? 800 : 400, textAlign: m.align || 'center', letterSpacing: (m.spacing || 0) + 'px', whiteSpace: 'pre-wrap' }, text: m.text }));
     else obj.append(el('img', { src: m.paused && m._still ? m._still : (m._img ? m._img.src : m.src) }));
     if (m.id === selectedMediaId) {
       obj.append(
@@ -735,12 +749,62 @@ function objContextBar(m) {
     btn('sparkle', 'Animar', () => objAnimSheet(m)),
     btn('sun', 'Estilo', () => objStyleSheet(m)),
   );
-  if (m.type === 'text') bar.append(btn('pen', 'Editar texto', async () => { const txt = await promptDialog({ title: 'Editar texto', value: m.text }); if (txt != null && txt.trim()) { m.text = txt; engine.renderMedia(); engine.markDirty(); } }));
+  if (m.type === 'text') bar.append(btn('text', 'Editar texto', () => openTextEditor(m)));
   if (m.type === 'gif') bar.append(btn(m.paused ? 'playFilled' : 'pauseFilled', m.paused ? 'Reproducir' : 'Pausar', () => toggleGifPause(m)));
   bar.append(btn('trash', 'Eliminar', () => { engine.removeMedia(m.id); selectedMediaId = null; }));
   bar.addEventListener('pointerdown', (e) => e.stopPropagation());
   return bar;
 }
+// Editor de texto completo: contenido, color, tamaño, fuente, grosor,
+// alineación, opacidad y espaciado — con vista previa en vivo.
+function openTextEditor(m) {
+  const body = el('div', { class: 'text-editor' });
+  const sh = sheet('Editar texto', body);
+  const apply = () => { engine.renderMedia(); engine.markDirty(); };
+
+  const ta = el('textarea', { class: 'textarea', value: m.text, style: { fontFamily: m.font || 'Nunito, sans-serif', fontSize: '1.05rem' } });
+  ta.oninput = () => { m.text = ta.value; apply(); };
+  body.append(ta);
+
+  // Color — swatches rápidos + selector nativo, arreglado (antes no cambiaba).
+  const colorRow = el('div', { class: 'te-row' });
+  const colorInput = el('input', { type: 'color', class: 'te-color', value: /^#/.test(m.color || '') ? m.color : '#5a4e58' });
+  colorInput.oninput = () => { m.color = colorInput.value; sync(); apply(); };
+  const sw = el('div', { class: 'te-swatches' });
+  ['#5a4e58', '#ffffff', '#e8899e', '#8fbca4', '#a68fd0', '#f2c14e', '#ef6f6f', '#5aa0e0'].forEach((c) =>
+    sw.append(el('button', { class: 'st-swatch', style: { background: c }, onclick: () => { m.color = c; colorInput.value = c; sync(); apply(); } })));
+  colorRow.append(colorInput, sw);
+  body.append(labeled('Color', colorRow));
+
+  // Fuente
+  const fonts = el('div', { class: 'scroll-x' });
+  TEXT_FONTS.concat([['"Brush Script MT", cursive', 'Script'], ['Impact, sans-serif', 'Impacto']]).forEach(([f, label]) =>
+    fonts.append(el('button', { class: 'chip' + ((m.font || TEXT_FONTS[0][0]) === f ? ' active' : ''), text: label, style: { fontFamily: f }, onclick: (e) => { m.font = f; fonts.querySelectorAll('.chip').forEach((c) => c.classList.remove('active')); e.target.classList.add('active'); ta.style.fontFamily = f; apply(); } })));
+  body.append(labeled('Fuente', fonts));
+
+  // Alineación + grosor
+  const style = el('div', { class: 'te-row', style: { gap: '8px' } });
+  const alignBtn = (ic, val) => el('button', { class: 'te-icon' + ((m.align || 'center') === val ? ' active' : ''), html: icon(ic), onclick: (e) => { m.align = val; style.querySelectorAll('.te-icon').forEach((b) => b.classList.remove('active')); e.currentTarget.classList.add('active'); apply(); } });
+  const boldBtn = el('button', { class: 'te-icon' + (m.bold ? ' active' : ''), html: icon('bold'), onclick: (e) => { m.bold = !m.bold; e.currentTarget.classList.toggle('active', m.bold); apply(); } });
+  style.append(alignBtn('alignL', 'left'), alignBtn('alignC', 'center'), alignBtn('alignR', 'right'), el('span', { style: { flex: 1 } }), boldBtn);
+  body.append(labeled('Estilo', style));
+
+  const mkSl = (label, min, max, val, step, fmt, on) => {
+    const v = el('span', { class: 'val', text: fmt(val) });
+    const sl = el('input', { class: 'slider', type: 'range', min, max, step, value: val });
+    sl.oninput = () => { on(+sl.value); v.textContent = fmt(+sl.value); apply(); };
+    return el('div', { class: 'opt-group' }, [el('div', { class: 'lab' }, [el('span', { text: label }), v]), sl]);
+  };
+  body.append(
+    mkSl('Tamaño', 16, 200, Math.round(m.fontSize || 48), 1, (x) => x + 'px', (x) => m.fontSize = x),
+    mkSl('Opacidad', 10, 100, Math.round((m.opacity ?? 1) * 100), 1, (x) => x + '%', (x) => m.opacity = x / 100),
+    mkSl('Espaciado', -2, 20, m.spacing || 0, 0.5, (x) => x + 'px', (x) => m.spacing = x),
+  );
+
+  function labeled(label, node) { return el('div', { class: 'field' }, [el('label', { text: label }), node]); }
+  function sync() { colorInput.value = /^#/.test(m.color) ? m.color : '#5a4e58'; }
+}
+
 function objAnimSheet(m) {
   const body = el('div');
   const sh = sheet('Animación del objeto', body);
@@ -883,6 +947,38 @@ async function shareDrawing() {
   }
   downloadDataURL(url, 'dibujo.png'); toast('Imagen lista para compartir');
 }
+// Animación de envío a pantalla completa — la obra se eleva, se ilumina y se
+// deshace en un enjambre de corazones/partículas hacia tu pareja. El sonido se
+// carga desde Audio/UI/send-special.(wav|mp3), intercambiable sin tocar código.
+function playSendAnimation(thumb) {
+  return new Promise((resolve) => {
+    import('../core/sounds.js').then((m) => m.playFx('sendSpecial'));
+    if (navigator.vibrate) navigator.vibrate([12, 40, 18]);
+    const ov = el('div', { class: 'send-cine' });
+    const glow = el('div', { class: 'sc-glow' });
+    const card = el('div', { class: 'sc-card' }, [thumb ? el('img', { src: thumb }) : null]);
+    const ring = el('div', { class: 'sc-ring' });
+    const label = el('div', { class: 'sc-label', text: 'Enviando con amor…' });
+    const parts = el('div', { class: 'sc-particles' });
+    const hearts = ['♥', '✦', '❤', '✧', '♡'];
+    for (let i = 0; i < 28; i++) {
+      const p = el('i', { text: hearts[i % hearts.length] });
+      const ang = Math.random() * Math.PI * 2, dist = 120 + Math.random() * 260;
+      p.style.setProperty('--dx', Math.cos(ang) * dist + 'px');
+      p.style.setProperty('--dy', (Math.sin(ang) * dist - 120) + 'px');
+      p.style.setProperty('--d', (0.5 + Math.random() * 0.6) + 's');
+      p.style.setProperty('--delay', (0.35 + Math.random() * 0.35) + 's');
+      p.style.setProperty('--sz', (10 + Math.random() * 20) + 'px');
+      parts.append(p);
+    }
+    ov.append(glow, ring, card, parts, label);
+    document.body.append(ov);
+    requestAnimationFrame(() => ov.classList.add('go'));
+    setTimeout(() => { label.textContent = '¡Enviado! 💞'; }, 1150);
+    setTimeout(() => { ov.classList.add('out'); setTimeout(() => { ov.remove(); resolve(); }, 400); }, 1900);
+  });
+}
+
 // Hoja de envío: vista previa del proceso, "Editable después" y modo secreto.
 async function openSendSheet() {
   await doSave(true);
@@ -905,9 +1001,10 @@ async function openSendSheet() {
       current.sent = true; current.editableAfter = editable; current.draft = false;
       if (secret) current.secret = true;
       await db.put('drawings', current);
+      await playSendAnimation(current.thumb);       // animación cinematográfica + sonido especial
       const { sendDrawingToPartner } = await import('./chat.js');
       await sendDrawingToPartner(current, { secret });
-      toast(secret ? 'Enviado en secreto' : t('toast.sent')); sound('send');
+      toast(secret ? 'Enviado en secreto 💌' : t('toast.sent'));
       bus.emit('gallery:refresh');
     } }),
   );
