@@ -3,6 +3,7 @@ import { el, $ } from '../core/utils.js';
 import { store } from '../core/store.js';
 import { t } from '../core/i18n.js';
 import { go } from '../core/router.js';
+import { icon } from './icons.js';
 
 export function renderOnboarding(ctx) {
   const root = ctx.root;
@@ -19,7 +20,7 @@ export function renderOnboarding(ctx) {
     card.innerHTML = '';
     if (step === 0) {
       card.append(
-        el('div', { style: { fontSize: '3.4rem' }, text: '💕' }),
+        el('div', { class: 'onb-ic', html: icon('heart') }),
         el('h1', { style: { fontFamily: 'var(--font-round)', marginTop: '8px' }, text: t('onb.welcome') }),
         el('p', { style: { color: 'var(--text-2)', margin: '8px 0 20px' }, text: t('onb.sub') }),
         input('onb.yourName', data.name, (v) => data.name = v),
@@ -28,11 +29,11 @@ export function renderOnboarding(ctx) {
       );
     } else {
       card.append(
-        el('div', { style: { fontSize: '3.4rem' }, text: '💍' }),
+        el('div', { class: 'onb-ic', html: icon('calendar') }),
         el('h2', { style: { fontFamily: 'var(--font-round)', marginTop: '8px' }, text: t('onb.anniversary') }),
         el('p', { style: { color: 'var(--text-2)', margin: '8px 0 16px' }, text: 'Opcional — para vuestro contador de tiempo juntos.' }),
         el('input', { class: 'input', type: 'date', style: { textAlign: 'center' }, oninput: (e) => data.since = e.target.value }),
-        el('button', { class: 'btn btn-primary btn-block btn-lg', style: { marginTop: '20px' }, html: '🎨 ' + t('onb.start'), onclick: finish }),
+        el('button', { class: 'btn btn-primary btn-block btn-lg', style: { marginTop: '20px' }, text: t('onb.start'), onclick: finish }),
         el('button', { class: 'btn btn-ghost btn-block', style: { marginTop: '8px' }, text: t('common.back'), onclick: () => { step = 0; render(); } }),
       );
     }

@@ -104,13 +104,13 @@ function handleInviteParam() {
   const invite = params.get('invite');
   if (invite) {
     store.set('couple', { inviteCode: invite });
-    setTimeout(() => toast('💞 Código de invitación recibido'), 1200);
+    setTimeout(() => toast('Código de invitación recibido'), 1200);
   }
 }
 
 // Captura del prompt de instalación PWA.
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); window.__deferredPrompt = e; bus.emit('pwa:installable'); });
-window.addEventListener('appinstalled', () => toast('¡Dibujo instalada! 🎉'));
+window.addEventListener('appinstalled', () => toast('¡Dibujo instalada!'));
 
 async function registerSW() {
   if (!('serviceWorker' in navigator)) return;

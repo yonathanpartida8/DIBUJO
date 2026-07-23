@@ -5,6 +5,22 @@ distancia y en tiempo real. Interfaz premium en **español latino**, pastel
 refinado (no infantil), iconografía SVG profesional (sin emojis en la UI),
 inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
 
+## Novedades v7 (iconografía y pulido)
+
+- **Set de iconos rediseñado**: cada herramienta de dibujo es ahora un
+  implemento único y legible (lápiz, carboncillo sólido con polvo, tiza en
+  bloque, crayón con envoltura, marcador con capuchón, pluma, bolígrafo,
+  caligrafía como trazo, pincel redondo/plano, acuarela con gota,
+  difuminador, aerógrafo, salpicado, borradores, cubeta…). Verificados
+  legibles al tamaño real de la barra (26 px).
+- **Iconos nuevos** cohesivos: `flame`, `target`, `trophy`, `calendar`,
+  `hourglass`, `cake`, `link`, más `image`/`gif` rehechos como contorno.
+- **Bugs de iconos corregidos**: `emoji` (se dibujaba como un disco negro) y
+  `image`/`gif` (cuadros negros sólidos) ahora son contornos limpios.
+- **Sin emojis en la UI**: "Nosotros", widgets, onboarding, login, avisos
+  (toasts) y retos usan el set SVG en lugar de emojis, para un acabado
+  premium y coherente.
+
 ## Novedades v6 (máxima calidad)
 
 - **Trazos continuos**: pluma, bolígrafo y borrador se renderizan como líneas

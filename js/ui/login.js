@@ -30,7 +30,7 @@ function showWelcome(card) {
   card.append(
     el('div', { class: 'login-heart', html: heartSVG }),
     el('h1', { class: 'login-title', text: 'Dibujo' }),
-    el('p', { class: 'login-sub', text: 'Un espacio privado para dibujar juntos,\naunque estén a miles de kilómetros 💞' }),
+    el('p', { class: 'login-sub', text: 'Un espacio privado para dibujar juntos,\naunque estén a miles de kilómetros.' }),
     el('button', { class: 'btn btn-block btn-lg login-google', html: googleSVG + '<span>Continuar con Google</span>', onclick: () => doGoogle(card) }),
     el('button', { class: 'btn btn-ghost btn-block', style: { marginTop: '10px' }, text: 'Usar sin cuenta (solo este dispositivo)', onclick: () => {
       store.set('account', { mode: 'local' });
@@ -104,28 +104,28 @@ async function showInvite(card) {
     el('div', { class: 'login-big-icon lbi-accent', html: icon('send') }),
     el('h2', { class: 'login-title', style: { fontSize: '1.4rem' }, text: 'Comparte este código' }),
     el('div', { class: 'invite-code', text: code }),
-    el('p', { class: 'login-sub', text: 'Cuando tu pareja lo introduzca, quedarán vinculados para siempre y se creará su espacio privado. 💕' }),
+    el('p', { class: 'login-sub', text: 'Cuando tu pareja lo introduzca, quedarán vinculados para siempre y se creará su espacio privado.' }),
     el('button', { class: 'btn btn-primary btn-block', text: 'Copiar y compartir', onclick: async () => {
-      const msg = `Únete a nuestro espacio en Dibujo 💕 Código: ${code} — ${location.origin}${location.pathname}`;
+      const msg = `Únete a nuestro espacio en Dibujo. Código: ${code} — ${location.origin}${location.pathname}`;
       try { if (navigator.share) await navigator.share({ text: msg }); else { await navigator.clipboard.writeText(msg); toast('Copiado ✓'); } } catch {}
     } }),
     el('div', { class: 'login-waiting' }, [el('span', { class: 'pulse-dot' }), 'Esperando a tu pareja…']),
     el('button', { class: 'btn btn-ghost btn-block', text: 'Entrar mientras tanto', onclick: () => finish() }),
   );
-  fb.watchLink(() => { sound('achieve'); toast('¡Están vinculados! 💞', { ms: 3000 }); finish(); });
+  fb.watchLink(() => { sound('achieve'); toast('¡Están vinculados!', { ms: 3000 }); finish(); });
 }
 
 function showJoin(card) {
   card.innerHTML = '';
   const input = el('input', { class: 'input invite-input', placeholder: 'AB7K-XP93', maxlength: 9, autocapitalize: 'characters' });
   input.oninput = () => { input.value = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''); };
-  const btn = el('button', { class: 'btn btn-primary btn-block btn-lg', text: 'Vincularnos 💞', onclick: async () => {
+  const btn = el('button', { class: 'btn btn-primary btn-block btn-lg', text: 'Vincularnos', onclick: async () => {
     btn.disabled = true; btn.textContent = 'Vinculando…';
     try {
       await fb.joinWithCode(input.value);
-      sound('achieve'); toast('¡Espacio privado creado! 💕', { ms: 3000 });
+      sound('achieve'); toast('¡Espacio privado creado!', { ms: 3000 });
       finish();
-    } catch (e) { toast(e.message || 'Código no válido'); btn.disabled = false; btn.textContent = 'Vincularnos 💞'; }
+    } catch (e) { toast(e.message || 'Código no válido'); btn.disabled = false; btn.textContent = 'Vincularnos'; }
   } });
   card.append(
     el('div', { class: 'login-big-icon lbi-accent', html: icon('key') }),

@@ -36,7 +36,7 @@ const dict = {
     'onb.welcome': 'Bienvenidos a Dibujo', 'onb.sub': 'Un lienzo para dos corazones',
     'onb.yourName': '¿Cómo te llamas?', 'onb.partnerName': '¿Y tu pareja?', 'onb.anniversary': '¿Desde cuándo están juntos?',
     'onb.start': 'Empezar a dibujar', 'onb.next': 'Siguiente',
-    'toast.saved': 'Dibujo guardado 💕', 'toast.copied': 'Enlace copiado', 'toast.sent': 'Enviado 💌',
+    'toast.saved': 'Dibujo guardado', 'toast.copied': 'Enlace copiado', 'toast.sent': 'Enviado',
     'toast.exported': 'Exportado', 'toast.cleared': 'Lienzo limpio',
   },
   en: {
@@ -72,7 +72,7 @@ const dict = {
     'onb.welcome': 'Welcome to Dibujo', 'onb.sub': 'A canvas for two hearts',
     'onb.yourName': "What's your name?", 'onb.partnerName': 'And your partner?', 'onb.anniversary': 'Together since?',
     'onb.start': 'Start drawing', 'onb.next': 'Next',
-    'toast.saved': 'Drawing saved 💕', 'toast.copied': 'Link copied', 'toast.sent': 'Sent 💌',
+    'toast.saved': 'Drawing saved', 'toast.copied': 'Link copied', 'toast.sent': 'Sent',
     'toast.exported': 'Exported', 'toast.cleared': 'Canvas cleared',
   },
 };

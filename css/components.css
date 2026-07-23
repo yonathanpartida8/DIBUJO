@@ -192,6 +192,16 @@
 .stat .num { font-family: var(--font-round); font-size: 1.6rem; font-weight: 800; color: var(--text); }
 .stat .lab { font-size: 0.72rem; color: var(--text-2); }
 .streak { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: #e8935f; }
+.streak svg { width: 22px; height: 22px; }
+.ic-inline { display: inline-flex; align-items: center; vertical-align: -0.14em; }
+.ic-inline svg { width: 1em; height: 1em; color: var(--primary); fill: var(--primary); }
+.section-title .sec-ic { display: inline-flex; }
+.section-title .sec-ic svg { width: 18px; height: 18px; color: var(--text-2); }
+.big-ic { display: inline-flex; }
+.big-ic svg { width: 28px; height: 28px; color: var(--primary); }
+.big-ic-lg svg { width: 44px; height: 44px; }
+.onb-ic { display: flex; justify-content: center; }
+.onb-ic svg { width: 56px; height: 56px; color: var(--primary); fill: var(--primary); filter: drop-shadow(0 8px 20px rgba(239,146,166,.35)); }
 
 /* ---------- Progress ---------- */
 .bar { height: 8px; border-radius: var(--r-pill); background: var(--line-2); overflow: hidden; }
@@ -261,7 +271,10 @@
 .w-quote { font-size: 0.92rem; font-weight: 600; line-height: 1.4; padding: 4px; }
 .w-img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-md); position: absolute; inset: 0; }
 .w-img + .w-cap { position: absolute; bottom: 8px; left: 8px; right: 8px; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
-.w-empty { opacity: 0.75; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.w-empty { opacity: 0.7; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.w-ic svg { width: 28px; height: 28px; color: var(--text-2); fill: var(--text-2); }
+.w-live { color: var(--primary); font-weight: 700; }
+.w-style svg { width: 14px; height: 14px; color: var(--text-2); }
 .w-disc-mini { width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle at center, var(--surface) 18%, #3a3244 20%, #2c2734 70%); border: 2px solid var(--line); }
 .w-disc-mini.spin { animation: vinylSpin 3s linear infinite; }
 .widget-board.editing .widget.jiggle { animation: jiggle 0.32s ease-in-out infinite alternate; }

@@ -17,10 +17,10 @@ export const ACHIEVEMENTS = [
 ];
 
 export const DAILY_CHALLENGES = [
-  'Dibuja cómo te sientes hoy 💭', 'Retrátense el uno al otro 👩‍❤️‍👨', 'Dibuja tu lugar favorito juntos 🏖️',
-  'Un dibujo solo con tonos pastel 🌸', 'Dibuja vuestra primera cita 💕', 'Un animalito que os represente 🐰',
-  'Dibuja el futuro que sueñan ✨', 'Solo pueden usar 3 colores 🎨', 'Dibuja un recuerdo bonito 📸',
-  'Un corazón, a vuestra manera ❤️', 'Dibuja lo que cenaron hoy 🍽️', 'Un paisaje de ensueño 🌄',
+  'Dibuja cómo te sientes hoy', 'Retrátense el uno al otro', 'Dibuja tu lugar favorito juntos',
+  'Un dibujo solo con tonos pastel', 'Dibuja vuestra primera cita', 'Un animalito que os represente',
+  'Dibuja el futuro que sueñan', 'Solo pueden usar 3 colores', 'Dibuja un recuerdo bonito',
+  'Un corazón, a vuestra manera', 'Dibuja lo que cenaron hoy', 'Un paisaje de ensueño',
 ];
 
 export function todaysChallenge() {

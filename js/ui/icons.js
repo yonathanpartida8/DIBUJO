@@ -1,5 +1,10 @@
 // Inline SVG icon set (minimal, rounded).
 const P = (d, extra = '') => `<svg viewBox="0 0 24 24" ${extra}><path d="${d}"/></svg>`;
+// Estilo base compartido para trazos: redondeado y de grosor uniforme.
+const STR = 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+const FILL = 'fill="currentColor"';
+// Ayudante multi-trazo: cada icono puede combinar varios <path> con su propio estilo.
+const M = (parts) => `<svg viewBox="0 0 24 24">${parts.map(([d, a = STR]) => `<path d="${d}" ${a}/>`).join('')}</svg>`;
 export const ICONS = {
   back: P('M15 18l-6-6 6-6', 'fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"'),
   undo: P('M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'),
@@ -18,10 +23,10 @@ export const ICONS = {
   play: P('M8 5v14l11-7z'),
   pause: P('M6 5h4v14H6zM14 5h4v14h-4z'),
   paper: P('M6 2h9l5 5v15H6zM14 2v6h6', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"'),
-  image: P('M21 5v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2zM8 11a2 2 0 100-4 2 2 0 000 4zm-3 8l5-6 3 4 4-5 4 7H5z'),
-  gif: P('M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1zm3 5v6m4-6h-2v6h2m0-3h-1m3-3v6m2-6h3m-3 3h2'),
+  image: M([['M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2z'], ['M3 16l4.3-4.3a1.6 1.6 0 012.2 0L15 17'], ['M13.5 15.5l2.3-2.3a1.6 1.6 0 012.2 0L21 16'], ['M8.4 9.4a1.35 1.35 0 10.01 0z', FILL]]),
+  gif: M([['M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2z'], ['M10 8.8l5 3.2-5 3.2z', FILL]]),
   text: P('M5 5h14v3M12 5v14m-3 0h6', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'),
-  emoji: P('M12 2a10 10 0 100 20 10 10 0 000-20zM8 10a1.3 1.3 0 100-2.6A1.3 1.3 0 008 10zm8 0a1.3 1.3 0 100-2.6A1.3 1.3 0 0016 10zm-8.2 4a4.5 4.5 0 008.4 0'),
+  emoji: P('M12 3a9 9 0 100 18 9 9 0 000-18zM8.5 10.5h.01M15.5 10.5h.01M8.3 14.3a4.5 4.5 0 007.4 0', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'),
   music: P('M9 18V6l10-2v12M9 18a3 3 0 11-6 0 3 3 0 016 0zm10-2a3 3 0 11-6 0 3 3 0 016 0z', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'),
   mic: P('M12 14a3 3 0 003-3V6a3 3 0 00-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0M12 19v3', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'),
   save: P('M5 3h11l3 3v15H5zM7 3v6h8V3M7 21v-7h10v7', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"'),
@@ -47,18 +52,27 @@ export const ICONS = {
   sticker: P('M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h6l8-8V5a2 2 0 00-2-2h-4zm-2 16v-4a2 2 0 012-2h4', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"'),
   select: P('M4 8V5a1 1 0 011-1h3M20 8V5a1 1 0 00-1-1h-3M4 16v3a1 1 0 001 1h3M20 16v3a1 1 0 01-1 1h-3', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"'),
 
-  /* ---- Herramientas de dibujo (estilo ilustración, ref. usuario) ---- */
-  toolMarker: P('M12 2.5l-2.6 5.2a1 1 0 00-.1.44V10h5.4V8.14a1 1 0 00-.1-.44L12 2.5zM8.6 11.5h6.8a1 1 0 011 1v7a2 2 0 01-2 2H9.6a2 2 0 01-2-2v-7a1 1 0 011-1zm.7 3.2h5.4', 'fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"'),
-  toolPen: P('M12 2.5c-1.3 2.2-3.4 4-3.4 7 0 1 .3 1.8.8 2.5h5.2c.5-.7.8-1.5.8-2.5 0-3-2.1-4.8-3.4-7zM9 14.5h6l-.6 5.2a2 2 0 01-2 1.8h-.8a2 2 0 01-2-1.8L9 14.5zm3-3.6v3.6', 'fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"'),
-  toolPencil: P('M12 2.5l3.4 5.9H8.6L12 2.5zm-3.4 6h6.8v10a2.2 2.2 0 01-2.2 2.2h-2.4a2.2 2.2 0 01-2.2-2.2v-10zm2.2 0v12m2.4-12v12M12 2.5v3', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
-  toolBrush: P('M12.5 2.8c-.9 3-1.5 6.4-1.3 9.2h2.6c.2-2.8-.4-6.2-1.3-9.2zM10.4 13.5h4.2a1.6 1.6 0 011.6 1.7l-.3 3.3a3 3 0 01-3 2.8h-.8a3 3 0 01-3-2.8l-.3-3.3a1.6 1.6 0 011.6-1.7z', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"'),
-  toolBucket: P('M7.2 9.4l6-6a1.4 1.4 0 012 0l4.2 4.2a1.4 1.4 0 010 2l-6.9 6.9a2.6 2.6 0 01-3.7 0l-2.7-2.7a2.6 2.6 0 011.1-4.4zm-.4.6L17 10.5M5 15.8c-.9 1.2-1.8 2.6-1.8 3.6a1.9 1.9 0 003.8 0c0-1-.9-2.4-2-3.6z', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"'),
-  toolEraser: P('M6.5 12.9l6.4-6.4a2.4 2.4 0 013.4 0l3.2 3.2a2.4 2.4 0 010 3.4l-6.4 6.4a2.4 2.4 0 01-3.4 0l-3.2-3.2a2.4 2.4 0 010-3.4zM4 21h9', 'fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"'),
-  toolSpray: P('M9 8h6a1 1 0 011 1v10a2 2 0 01-2 2h-4a2 2 0 01-2-2V9a1 1 0 011-1zm2-2.5V4a1 1 0 011-1h0a1 1 0 011 1v1.5M17.5 4h.01M19.5 6h.01M17.5 8h.01M19.5 2.5h.01M9.5 12h5', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"'),
-  toolWater: P('M12 3.2C9.4 6.6 6.5 10 6.5 13.5a5.5 5.5 0 0011 0c0-3.5-2.9-6.9-5.5-10.3zM9.3 14.2a2.8 2.8 0 002.7 2.9', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"'),
-  toolShapes: P('M8.2 3.5l4.3 7.5H3.9l4.3-7.5zM15.8 13a4 4 0 110 8 4 4 0 010-8zM4.5 14.5h6v6h-6v-6z', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"'),
-  toolPixel: P('M4 4h5v5H4V4zm11 0h5v5h-5V4zM4 15h5v5H4v-5zm11 0h5v5h-5v-5zM9.5 9.5h5v5h-5v-5z', 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"'),
-  toolCallig: P('M6 18c4-1 6.5-3.5 8-8l2.7-6.2a.8.8 0 011.4.6L16 11c-1.5 4.5-4.5 7-9 8l-1-1zM5 21h14', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"'),
+  /* ---- Herramientas de dibujo — un implemento único y legible por pincel ---- */
+  toolPencil: M([['M4 20l1-4L16 5a1.8 1.8 0 012.5 0L20 6.5a1.8 1.8 0 010 2.5L9 20l-4 1zM14.5 6.5l3 3M6 15l3 3']]),
+  toolCharcoal: M([['M6.5 17.5L15.5 7.5', 'fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"'], ['M18.4 5.6l.7.7 M4.6 19.4l.7.7 M17 8.4l.5.5', 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"']]),
+  toolChalk: M([['M8.27 19.27L4.73 15.73L13.73 6.73L17.27 10.27Z'], ['M19 5.4l.6.6 M17.4 3.9l.6.6 M4.6 18.6l.6.6', 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"']]),
+  toolCrayon: M([['M4.5 19.5l1.2-4.1L15.4 5.7a1.6 1.6 0 012.3 0l.6.6a1.6 1.6 0 010 2.3L8.6 18.3l-4.1 1.2z'], ['M8.9 10.9L12.4 14.4', 'fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="butt"']]),
+  toolMarker: M([['M3 21l1-4.2 8.4-8.4 3.7 3.7L7.7 20 3 21z M11.5 8.5l3.6 3.6 M14.4 5.6l1.6-1.6a1.5 1.5 0 012.1 0l1.4 1.4a1.5 1.5 0 010 2.1l-1.6 1.6z']]),
+  toolPixelB: M([['M5 5h5v5H5z M14 5h5v5h-5z M5 14h5v5H5z M14 14h5v5h-5z', FILL]]),
+  toolPen: M([['M4 20l1.8-5.2L15.5 5a1.7 1.7 0 012.4 0l1.1 1.1a1.7 1.7 0 010 2.4L9.2 18.2 4 20z M6 15l3 3 M13.5 7l3.5 3.5'], ['M12.6 10.3a.95.95 0 10.01 0z']]),
+  toolBall: M([['M5.5 18.5l1.4-3.6L15.8 6a2 2 0 012.8 2.8l-8.9 8.9-3.6 1.4z M14 7.8l2.2 2.2 M16.8 4.6l1.6.4.4 1.6']]),
+  toolCallig: M([['M4 19c4 .5 7.2-1.6 9.3-5.6C15 10 16.7 6.6 19.5 5c-1 3.4-1.8 6-3.4 9-2.1 3.9-5.6 6.4-10.9 6.2-.7 0-1.2-.6-1.2-1.2z', FILL]]),
+  toolBrush: M([['M20.5 3.5L11 13 M11.2 12.8c-2.6 1-4.6 3.4-5.6 7.6 4.2-1 6.6-3 7.6-5.6 M8.5 10.5l5 5']]),
+  toolFlat: M([['M20.5 4.5L12 13 M12 13l-6.5 2.5L8 18l2.5-6.5 M6.2 16.2l1.6 1.6 M8 14.8l1.6 1.6']]),
+  toolWater: M([['M20.5 4L14 10.5', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"'], ['M14 10.5c-1.5.6-2.6 2-3.3 3.9 2.2-.5 3.7-1.5 4.5-3.2'], ['M11.3 8.2l3.9 3.9', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"'], ['M7.5 13.5C9 15.4 9.9 16.6 9.9 17.8A2.4 2.4 0 015.1 17.8C5.1 16.6 6 15.4 7.5 13.5Z', FILL]]),
+  toolSmudge: M([['M13.5 4.5c-1 2.5-3 4-3 6.5a3.2 3.2 0 006.4 0c0-1.3-.6-2.4-1.4-3.6 M4 18c2.5-1 4.5-1 7 .2 M5 21c2-.6 3.6-.6 5.6.3']]),
+  toolSpray: M([['M9 9h5a1 1 0 011 1v9a2 2 0 01-2 2h-3a2 2 0 01-2-2v-9a1 1 0 011-1z M10.5 9V6a1 1 0 011-1h1a1 1 0 011 1v3 M9.5 13.5h5'], ['M17 6.2a.7.7 0 10.01 0z M19 8.2a.6.6 0 10.01 0z M18.5 4a.6.6 0 10.01 0z', FILL]]),
+  toolSplatter: M([['M11 9a2.6 2.6 0 10.01 0z M6 13.5a1.5 1.5 0 10.01 0z M17 14.5a1.7 1.7 0 10.01 0z M8.5 18.5a1.1 1.1 0 10.01 0z M17 7a1.2 1.2 0 10.01 0z M14 16.5a1.3 1.3 0 10.01 0z', FILL]]),
+  toolEraser: M([['M4 21h9 M7 18.5l7.5-7.5-4.5-4.5-6.2 6.2a1.6 1.6 0 000 2.3l1.9 1.9a1 1 0 001.4 0z M9.5 6.5l4.5 4.5 4-4a1.6 1.6 0 000-2.3l-2.2-2.2a1.6 1.6 0 00-2.3 0z']]),
+  toolEraserSoft: M([['M7 18.5l7.5-7.5-4.5-4.5-6.2 6.2a1.6 1.6 0 000 2.3l1.9 1.9a1 1 0 001.4 0z M9.5 6.5l4.5 4.5 4-4a1.6 1.6 0 000-2.3l-2.2-2.2a1.6 1.6 0 00-2.3 0z M4 21h9'], ['M17 15.5l.01 0 M19 13.5l.01 0 M20 17l.01 0', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"']]),
+  toolPixel: M([['M5 5h5v5H5z M14 5h5v5h-5z M5 14h5v5H5z M14 14h5v5h-5z']]),
+  toolBucket: M([['M8 10l6-6 6 6-7 7a2 2 0 01-2.8 0L7 13a2 2 0 011-3z M7.5 10.5L15 10 M19 16c1 1.4 1.8 2.7 1.8 3.5a1.8 1.8 0 01-3.6 0c0-.8.8-2.1 1.8-3.5z']]),
+  toolShapes: M([['M8.2 3.5l4.3 7.5H3.9l4.3-7.5z M15.8 13a4 4 0 110 8 4 4 0 010-8z M4.5 14.5h6v6h-6v-6z']]),
 
   /* ---- UI (ajustes, login, reproductor, adjuntos) ---- */
   sun: P('M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'),
@@ -87,17 +101,16 @@ export const ICONS = {
   secret: P('M12 3a7 7 0 00-7 7v2H4a1 1 0 00-1 1v7a1 1 0 001 1h16a1 1 0 001-1v-7a1 1 0 00-1-1h-1v-2a7 7 0 00-7-7zm-4 9v-2a4 4 0 118 0v2H8zm4 4v2.5', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
   sparkle: P('M12 2l1.8 5.7L19.5 9l-5.7 1.8L12 16.5l-1.8-5.7L4.5 9l5.7-1.3L12 2zM19 15l.9 2.6L22.5 18l-2.6.9L19 21.5l-.9-2.6L15.5 18l2.6-.9L19 15z', 'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"'),
   clock: P('M12 2a10 10 0 100 20 10 10 0 000-20zm0 5v5l3.5 2', 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'),
+  flame: M([['M12 3c1.4 2.8 4 4.4 4 7.7a4 4 0 11-8 0c0-1 .3-1.9.8-2.7.3 1 .9 1.6 1.7 1.8C9.7 8 10.8 5.6 12 3z']]),
+  target: M([['M12 3a9 9 0 100 18 9 9 0 000-18z M12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z'], ['M12 11a1 1 0 100 2 1 1 0 000-2z', FILL]]),
+  trophy: M([['M7 4h10v3.5a5 5 0 01-10 0z M7 5.5H4.5v.8a3 3 0 002.8 3 M17 5.5h2.5v.8a3 3 0 01-2.8 3 M12 12.5v3.5 M9 20h6 M10 16h4l.4 4H9.6z']]),
+  calendar: M([['M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2z M4 9h16 M8 3v3 M16 3v3']]),
+  hourglass: M([['M6 3h12 M6 21h12 M7 3c0 4 3 5.5 5 9-2 3.5-5 5-5 9 M17 3c0 4-3 5.5-5 9 2 3.5 5 5 5 9']]),
+  cake: M([['M4 21h16 M5 21v-7a2 2 0 012-2h10a2 2 0 012 2v7 M3.5 16c1.2 1.2 2.3 1.2 3.5 0s2.3-1.2 3.5 0 2.3 1.2 3.5 0 2.3-1.2 3.5 0 M12 8V5.5'], ['M12 4.4a.9.9 0 10.01 0z', FILL]]),
+  link: M([['M10 13a4 4 0 005.7 0l2.3-2.3a4 4 0 00-5.7-5.7L11 6.2 M14 11a4 4 0 00-5.7 0L6 13.3a4 4 0 005.7 5.7L13 17.8']]),
+  toolPencilVirtual: M([['M14.5 2.5l7 7-10 10-4 1.4a1 1 0 01-1.3-1.3L7.5 15.5l7-13zM6 22h6M12.5 4.5l5 5']]),
 
-  /* ---- Herramientas de dibujo únicas (una identidad por pincel) ---- */
-  toolCharcoal: P('M7 3.5l10 4-9.5 13.5a2 2 0 01-1.7.9H3v-3l4-15.4zM6 8l9.5 3.8', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
-  toolChalk: P('M14.5 2.6l6.9 6.9a1.5 1.5 0 010 2.1L10.6 22.4H3v-7.6L13.8 3.9M12 5.7l6.3 6.3', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
-  toolCrayon: P('M8 2.5h8a1 1 0 011 1v3H7v-3a1 1 0 011-1zm-1 5.5h10l-1 12.5a1.5 1.5 0 01-1.5 1.4H9.5A1.5 1.5 0 018 20.5L7 8zm5-4.5v3', 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"'),
-  toolBall: P('M12 3.2c-1.1 1.9-2.4 3.6-2.4 5.5a2.4 2.4 0 004.8 0c0-1.9-1.3-3.6-2.4-5.5zM10.2 14.5h3.6l-.7 6a1.1 1.1 0 01-1.1 1 1.1 1.1 0 01-1.1-1l-.7-6z', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
-  toolPixelB: P('M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z', 'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"'),
-  toolFlat: P('M4 15.5l11-11a2 2 0 012.8 0l1.7 1.7a2 2 0 010 2.8l-11 11H4v-4.5zM3 21h8', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
-  toolSmudge: P('M12 3c-3 3.5-6 6.5-6 10a6 6 0 0012 0c0-1.4-.5-2.7-1.2-3.9M9 21c3 0 5-1.5 6.5-3.5', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"'),
-  toolSplatter: P('M12 6.5a2 2 0 100-2.6M6.5 12a1.4 1.4 0 100-1.8M17.5 13a1.6 1.6 0 100-2M10 18a1.2 1.2 0 100-1.6M15 8.5a1 1 0 100-1.3M12.5 12.5a2.4 2.4 0 100-3', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"'),
-  toolPencilVirtual: P('M14.5 2.5l7 7-10 10-4 1.4a1 1 0 01-1.3-1.3L7.5 15.5l7-13zM6 22h6M12.5 4.5l5 5', 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"'),
+  /* ---- Editor de texto ---- */
   bold: P('M6 4h7a4 4 0 010 8H6zm0 8h8a4 4 0 010 8H6z', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"'),
   alignL: P('M4 6h16M4 12h11M4 18h14', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"'),
   alignC: P('M4 6h16M7 12h10M5 18h14', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"'),

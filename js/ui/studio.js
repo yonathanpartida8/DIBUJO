@@ -28,7 +28,7 @@ const TOOL_ICON = {
   pen: 'toolPen', ballpoint: 'toolBall', calligraphy: 'toolCallig',
   brush: 'toolBrush', flat: 'toolFlat', watercolor: 'toolWater', smudge: 'toolSmudge',
   airbrush: 'toolSpray', splatter: 'toolSplatter',
-  eraser: 'toolEraser', eraserSoft: 'droplet', eraserPixel: 'toolPixel',
+  eraser: 'toolEraser', eraserSoft: 'toolEraserSoft', eraserPixel: 'toolPixel',
   bucket: 'toolBucket', eyedropper: 'dropper', line: 'line', shapes: 'toolShapes',
   symmetry: 'symmetry', 'ruler-tool': 'ruler', 'pencil-sim': 'toolPencilVirtual', 'more-tools': 'more',
 };

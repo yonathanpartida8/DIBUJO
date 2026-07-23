@@ -11,83 +11,82 @@ import { bus } from '../core/bus.js';
 import { t, getLang } from '../core/i18n.js';
 import { sheet, promptDialog, toast } from '../core/ui.js';
 import { go } from '../core/router.js';
+import { icon } from './icons.js';
 
 const PHRASES = [
-  'El amor se dibuja todos los días 💗', 'Contigo, hasta los garabatos son arte ✨',
-  'Dos corazones, un solo lienzo 🎨', 'Cada trazo tuyo me enamora 🥰',
-  'La distancia es solo un espacio en blanco por pintar 🌈', 'Eres mi color favorito 💜',
-  'Hoy es un buen día para dibujarte un te quiero 💌', 'Nuestro amor no cabe en un lienzo 🖼️',
-  'Pintemos juntos este día 🌸', 'Tu sonrisa es mi mejor obra 😊',
+  'El amor se dibuja todos los días', 'Contigo, hasta los garabatos son arte',
+  'Dos corazones, un solo lienzo', 'Cada trazo tuyo me enamora',
+  'La distancia es solo un espacio en blanco por pintar', 'Eres mi color favorito',
+  'Hoy es un buen día para dibujarte un te quiero', 'Nuestro amor no cabe en un lienzo',
+  'Pintemos juntos este día', 'Tu sonrisa es mi mejor obra',
 ];
 
 // ---------- Registro de widgets ----------
-// Cada tipo define: nombre, emoji, tamaño por defecto y render(content, ws).
+// Cada tipo define: nombre, icono (SVG del set), tamaño por defecto y render(content, ws).
 export const WIDGET_TYPES = {
-  days: { name: 'Días juntos', emoji: '💞', h: 2, async render(c) {
+  days: { name: 'Días juntos', ic: 'heart', h: 2, async render(c) {
     const since = store.get().couple.since;
-    if (!since) { c.append(wLabel('💍', 'Definan su aniversario en Nosotros')); return; }
+    if (!since) { c.append(wLabel('heart', 'Definan su aniversario en Nosotros')); return; }
     const p = elapsedParts(since);
-    c.append(el('div', { class: 'w-big', text: p.days }), el('div', { class: 'w-cap', text: 'días juntos 💕' }),
+    c.append(el('div', { class: 'w-big', text: p.days }), el('div', { class: 'w-cap', text: 'días juntos' }),
       el('div', { class: 'w-sub', text: `${p.hours}h ${p.minutes}m ${p.seconds}s` }));
     c._timer = setInterval(() => { const q = elapsedParts(since); const sub = c.querySelector('.w-sub'); if (sub) sub.textContent = `${q.hours}h ${q.minutes}m ${q.seconds}s`; const big = c.querySelector('.w-big'); if (big) big.textContent = q.days; }, 1000);
   } },
-  countdown: { name: 'Cuenta regresiva', emoji: '⏳', h: 2, async render(c, ws) {
-    if (!ws.data?.date) { c.append(wLabel('⏳', 'Toca para elegir una fecha')); c.onclick = async () => { const d = await promptDialog({ title: 'Fecha (AAAA-MM-DD)', placeholder: '2026-12-24' }); if (d) { ws.data = { ...ws.data, date: d, label: await promptDialog({ title: '¿Qué esperan?', placeholder: 'Nuestro reencuentro' }) }; saveLayout(); bus.emit('widgets:refresh'); } }; return; }
+  countdown: { name: 'Cuenta regresiva', ic: 'hourglass', h: 2, async render(c, ws) {
+    if (!ws.data?.date) { c.append(wLabel('hourglass', 'Toca para elegir una fecha')); c.onclick = async () => { const d = await promptDialog({ title: 'Fecha (AAAA-MM-DD)', placeholder: '2026-12-24' }); if (d) { ws.data = { ...ws.data, date: d, label: await promptDialog({ title: '¿Qué esperan?', placeholder: 'Nuestro reencuentro' }) }; saveLayout(); bus.emit('widgets:refresh'); } }; return; }
     const ms = new Date(ws.data.date).getTime() - Date.now();
     const days = Math.max(0, Math.ceil(ms / 86400000));
-    c.append(el('div', { class: 'w-big', text: days }), el('div', { class: 'w-cap', text: `días para ${ws.data.label || 'el gran día'} ⏳` }));
+    c.append(el('div', { class: 'w-big', text: days }), el('div', { class: 'w-cap', text: `días para ${ws.data.label || 'el gran día'}` }));
   } },
-  weather: { name: 'Clima', emoji: '⛅', h: 2, async render(c) {
-    c.append(wLabel('⛅', 'Cargando clima…'));
+  weather: { name: 'Clima', ic: 'cloud', h: 2, async render(c) {
+    c.append(wLabel('cloud', 'Cargando clima…'));
     try {
       const pos = await new Promise((res, rej) => navigator.geolocation ? navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000 }) : rej());
       const { latitude, longitude } = pos.coords;
       const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code`);
       const j = await r.json();
-      const code = j.current.weather_code;
-      const icon = code === 0 ? '☀️' : code < 4 ? '⛅' : code < 60 ? '🌫️' : code < 70 ? '🌧️' : code < 80 ? '❄️' : '⛈️';
       c.innerHTML = '';
-      c.append(el('div', { class: 'w-big', text: `${Math.round(j.current.temperature_2m)}°` }), el('div', { class: 'w-cap', text: icon + ' clima de hoy' }));
-    } catch { c.innerHTML = ''; c.append(wLabel('⛅', 'Clima no disponible')); }
+      c.append(el('div', { class: 'w-big', text: `${Math.round(j.current.temperature_2m)}°` }), el('div', { class: 'w-cap', text: 'clima de hoy' }));
+    } catch { c.innerHTML = ''; c.append(wLabel('cloud', 'Clima no disponible')); }
   } },
-  music: { name: 'Música', emoji: '🎵', h: 2, async render(c) {
+  music: { name: 'Música', ic: 'music', h: 2, async render(c) {
     const track = window.__vinylState?.track;
-    if (track) c.append(el('div', { class: 'w-disc-mini' + (window.__vinylState.playing ? ' spin' : '') }), el('div', { class: 'w-cap', text: track.name }), el('div', { class: 'w-sub', text: track.artist || 'Su canción 🎶' }));
-    else c.append(wLabel('🎵', 'Sin música ahora'));
+    if (track) c.append(el('div', { class: 'w-disc-mini' + (window.__vinylState.playing ? ' spin' : '') }), el('div', { class: 'w-cap', text: track.name }), el('div', { class: 'w-sub', text: track.artist || 'Su canción' }));
+    else c.append(wLabel('music', 'Sin música ahora'));
     c.onclick = () => import('./vinyl.js').then((m) => m.openVinyl());
   } },
-  lastDrawing: { name: 'Último dibujo', emoji: '🖼️', h: 3, async render(c) {
+  lastDrawing: { name: 'Último dibujo', ic: 'image', h: 3, async render(c) {
     const ds = await db.allByIndex('drawings', 'updatedAt', 'prev');
-    if (!ds.length) { c.append(wLabel('🖼️', 'Aún sin dibujos')); return; }
+    if (!ds.length) { c.append(wLabel('image', 'Aún sin dibujos')); return; }
     const d = ds[0];
     c.append(el('img', { class: 'w-img', src: d.thumb }), el('div', { class: 'w-cap', text: d.title || 'Sin título' }));
     c.onclick = () => go('studio', { id: d.id });
   } },
-  activity: { name: 'Actividad reciente', emoji: '🕑', h: 2, async render(c) {
+  activity: { name: 'Actividad reciente', ic: 'clock', h: 2, async render(c) {
     const [ds, ms] = await Promise.all([db.allByIndex('drawings', 'updatedAt', 'prev'), db.allByIndex('messages', 'ts', 'prev')]);
     const items = [];
-    if (ds[0]) items.push(`🎨 Dibujo · ${timeAgo(ds[0].updatedAt, t)}`);
-    if (ms[0]) items.push(`💬 Mensaje · ${timeAgo(ms[0].ts, t)}`);
-    if (!items.length) items.push('Todo tranquilo por aquí 🌙');
+    if (ds[0]) items.push(`Dibujo · ${timeAgo(ds[0].updatedAt, t)}`);
+    if (ms[0]) items.push(`Mensaje · ${timeAgo(ms[0].ts, t)}`);
+    if (!items.length) items.push('Todo tranquilo por aquí');
     c.append(el('div', { class: 'w-cap', text: 'Actividad' }), ...items.map((x) => el('div', { class: 'w-sub', text: x })));
   } },
-  phrase: { name: 'Frase del día', emoji: '💬', h: 2, async render(c) {
+  phrase: { name: 'Frase del día', ic: 'chat', h: 2, async render(c) {
     const day = Math.floor(Date.now() / 86400000);
     c.append(el('div', { class: 'w-quote', text: PHRASES[day % PHRASES.length] }));
   } },
-  memories: { name: 'Recuerdos', emoji: '📸', h: 2, async render(c) {
+  memories: { name: 'Recuerdos', ic: 'image', h: 2, async render(c) {
     const mems = await db.allByIndex('memories', 'date', 'prev');
-    if (!mems.length) { c.append(wLabel('📸', 'Guarden recuerdos en Nosotros')); return; }
+    if (!mems.length) { c.append(wLabel('image', 'Guarden recuerdos en Nosotros')); return; }
     const m = mems[Math.floor(Math.random() * mems.length)];
     c.append(el('div', { style: { fontSize: '1.6rem' }, text: m.emoji }), el('div', { class: 'w-cap', text: m.title }), el('div', { class: 'w-sub', text: fmtDate(m.date, getLang()) }));
   } },
-  notes: { name: 'Notas', emoji: '📝', h: 2, async render(c, ws) {
-    c.append(el('div', { class: 'w-cap', text: '📝 Nota' }), el('div', { class: 'w-quote', style: { fontSize: '0.85rem' }, text: ws.data?.text || 'Toca para escribir una notita…' }));
+  notes: { name: 'Notas', ic: 'paper', h: 2, async render(c, ws) {
+    c.append(el('div', { class: 'w-cap', text: 'Nota' }), el('div', { class: 'w-quote', style: { fontSize: '0.85rem' }, text: ws.data?.text || 'Toca para escribir una notita…' }));
     c.onclick = async () => { const txt = await promptDialog({ title: 'Nota', value: ws.data?.text || '' }); if (txt != null) { ws.data = { text: txt }; saveLayout(); bus.emit('widgets:refresh'); } };
   } },
-  photo: { name: 'Foto favorita', emoji: '🖼️', h: 3, async render(c, ws) {
+  photo: { name: 'Foto favorita', ic: 'image', h: 3, async render(c, ws) {
     if (ws.data?.src) { c.append(el('img', { class: 'w-img', src: ws.data.src })); }
-    else { c.append(wLabel('🖼️', 'Toca para elegir una foto')); }
+    else { c.append(wLabel('image', 'Toca para elegir una foto')); }
     c.onclick = () => {
       const inp = el('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
       document.body.append(inp);
@@ -95,47 +94,47 @@ export const WIDGET_TYPES = {
       inp.click();
     };
   } },
-  birthday: { name: 'Cumpleaños', emoji: '🎂', h: 2, async render(c, ws) {
-    if (!ws.data?.date) { c.append(wLabel('🎂', 'Toca para configurar')); c.onclick = async () => { const d = await promptDialog({ title: 'Cumpleaños (MM-DD)', placeholder: '07-24' }); if (d) { ws.data = { date: d, name: await promptDialog({ title: '¿De quién?', value: store.get().partner.name }) }; saveLayout(); bus.emit('widgets:refresh'); } }; return; }
+  birthday: { name: 'Cumpleaños', ic: 'cake', h: 2, async render(c, ws) {
+    if (!ws.data?.date) { c.append(wLabel('cake', 'Toca para configurar')); c.onclick = async () => { const d = await promptDialog({ title: 'Cumpleaños (MM-DD)', placeholder: '07-24' }); if (d) { ws.data = { date: d, name: await promptDialog({ title: '¿De quién?', value: store.get().partner.name }) }; saveLayout(); bus.emit('widgets:refresh'); } }; return; }
     const [mm, dd] = ws.data.date.split('-').map(Number);
     const now = new Date(); let next = new Date(now.getFullYear(), mm - 1, dd);
     if (next < now) next = new Date(now.getFullYear() + 1, mm - 1, dd);
     const days = Math.ceil((next - now) / 86400000);
-    c.append(el('div', { class: 'w-big', text: days }), el('div', { class: 'w-cap', text: `días para el cumple de ${ws.data.name || '💗'} 🎂` }));
+    c.append(el('div', { class: 'w-big', text: days }), el('div', { class: 'w-cap', text: `días para el cumple de ${ws.data.name || store.get().partner.name}` }));
   } },
-  calendar: { name: 'Calendario', emoji: '📅', h: 2, async render(c) {
+  calendar: { name: 'Calendario', ic: 'calendar', h: 2, async render(c) {
     const now = new Date();
     c.append(el('div', { class: 'w-cap', text: now.toLocaleDateString('es-MX', { weekday: 'long' }) }),
       el('div', { class: 'w-big', text: now.getDate() }),
       el('div', { class: 'w-sub', text: now.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) }));
   } },
-  goals: { name: 'Objetivos', emoji: '🎯', h: 2, async render(c) {
+  goals: { name: 'Objetivos', ic: 'target', h: 2, async render(c) {
     const goals = store.get().couple.goals || [];
-    if (!goals.length) { c.append(wLabel('🎯', 'Creen metas en Nosotros')); return; }
+    if (!goals.length) { c.append(wLabel('target', 'Creen metas en Nosotros')); return; }
     const g = goals[0]; const count = await db.count('drawings');
     const prog = Math.min(1, count / g.target);
-    c.append(el('div', { class: 'w-cap', text: '🎯 ' + g.title }), el('div', { class: 'bar', style: { margin: '8px 0' } }, [el('i', { style: { width: prog * 100 + '%' } })]), el('div', { class: 'w-sub', text: `${count}/${g.target}` }));
+    c.append(el('div', { class: 'w-cap', text: g.title }), el('div', { class: 'bar', style: { margin: '8px 0' } }, [el('i', { style: { width: prog * 100 + '%' } })]), el('div', { class: 'w-sub', text: `${count}/${g.target}` }));
   } },
-  achievements: { name: 'Logros', emoji: '🏆', h: 2, async render(c) {
+  achievements: { name: 'Logros', ic: 'trophy', h: 2, async render(c) {
     const n = (store.get().couple.achievements || []).length;
-    c.append(el('div', { class: 'w-big', text: n }), el('div', { class: 'w-cap', text: 'logros desbloqueados 🏆' }));
+    c.append(el('div', { class: 'w-big', text: n }), el('div', { class: 'w-cap', text: 'logros desbloqueados' }));
     c.onclick = () => import('./achievements-ui.js').then((m) => m.openAchievements());
   } },
-  partner: { name: 'Mi pareja', emoji: '💗', h: 2, async render(c) {
+  partner: { name: 'Mi pareja', ic: 'users', h: 2, async render(c) {
     const p = store.get().partner;
     const av = el('div', { class: 'avatar', style: { margin: '0 auto 6px', background: p.color || 'var(--lav)' } });
     if (p.avatar) av.append(el('img', { src: p.avatar })); else av.textContent = (p.name || '?')[0];
-    const state = p.drawing ? '🎨 dibujando ahora' : p.online ? '🟢 en línea' : '💤 ' + timeAgo(p.lastSeen, t);
-    c.append(av, el('div', { class: 'w-cap', text: p.name }), el('div', { class: 'w-sub', text: state }));
+    const state = p.drawing ? 'dibujando ahora' : p.online ? 'en línea' : timeAgo(p.lastSeen, t);
+    c.append(av, el('div', { class: 'w-cap', text: p.name }), el('div', { class: 'w-sub' + (p.drawing || p.online ? ' w-live' : '') , text: state }));
     c.onclick = () => go('chat');
   } },
-  streak: { name: 'Racha', emoji: '🔥', h: 2, async render(c) {
-    c.append(el('div', { class: 'w-big', text: store.get().couple.streak || 0 }), el('div', { class: 'w-cap', text: 'días de racha 🔥' }));
+  streak: { name: 'Racha', ic: 'flame', h: 2, async render(c) {
+    c.append(el('div', { class: 'w-big', text: store.get().couple.streak || 0 }), el('div', { class: 'w-cap', text: 'días de racha' }));
   } },
 };
 
-function wLabel(emoji, text) {
-  return el('div', { class: 'w-empty' }, [el('div', { style: { fontSize: '1.5rem' }, text: emoji }), el('div', { class: 'w-sub', text })]);
+function wLabel(iconName, text) {
+  return el('div', { class: 'w-empty' }, [el('div', { class: 'w-ic', html: icon(iconName) }), el('div', { class: 'w-sub', text })]);
 }
 
 // ---------- Disposición ----------
@@ -175,7 +174,7 @@ export function renderBoard(host) {
       card.append(
         el('button', { class: 'w-del', text: '✕', onclick: (e) => { e.stopPropagation(); ws.hidden = true; persist(layout); renderBoard(host); } }),
         el('button', { class: 'w-size', text: ws.w === 2 ? '◱' : '◳', onclick: (e) => { e.stopPropagation(); ws.w = ws.w === 2 ? 1 : 2; persist(layout); renderBoard(host); } }),
-        el('button', { class: 'w-style', text: '🎨', onclick: (e) => { e.stopPropagation(); customize(ws, layout, host); } }),
+        el('button', { class: 'w-style', html: icon('pen'), onclick: (e) => { e.stopPropagation(); customize(ws, layout, host); } }),
       );
       enableDrag(card, ws, layout, host);
     }
@@ -248,6 +247,6 @@ function addWidget(layout, host) {
       if (hidden) hidden.hidden = false;
       else full.push({ id: uid('w'), type, col: 0, row: Math.max(0, ...full.map((x) => x.row)) + 1, w: 1 });
       saveLayout(full); s.close(); renderBoard(host);
-    } }, [el('div', { style: { fontSize: '1.5rem' }, text: def.emoji }), el('div', { class: 'meta', html: `<div class="t">${def.name}</div>` })]));
+    } }, [el('div', { class: 'attach-ic', style: { margin: '0 auto' }, html: icon(def.ic) }), el('div', { class: 'meta', html: `<div class="t">${def.name}</div>` })]));
   }
 }
