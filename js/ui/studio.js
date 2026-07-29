@@ -197,7 +197,9 @@ export async function renderStudio(ctx) {
     const quick = el('div', { class: 'st-quick st-size-bar' });
     const swatch = el('button', { class: 'st-color-swatch', id: 'st-swatch', onclick: openColorWheel });
     const slider = el('input', { class: 'slider slim', type: 'range', min: 1, max: 200, value: engine.brushSize, id: 'st-size' });
-    slider.oninput = () => { engine.brushSize = +slider.value; updateSizeDot(); const n = $('#st-sizenum'); if (n) n.textContent = slider.value; };
+    const setFill = () => slider.style.setProperty('--fill', ((slider.value - slider.min) / (slider.max - slider.min) * 100) + '%');
+    setFill();
+    slider.oninput = () => { engine.brushSize = +slider.value; updateSizeDot(); setFill(); const n = $('#st-sizenum'); if (n) n.textContent = slider.value; };
     const sizeNum = el('button', { class: 'st-sizenum', id: 'st-sizenum', text: String(engine.brushSize), onclick: openBrushOptions });
     const brushBtn = el('button', { class: 'icon-btn', html: icon('pen'), onclick: openBrushPicker });
     quick.append(swatch, el('div', { class: 'st-slider-wrap' }, [slider]), sizeNum, brushBtn);
@@ -212,7 +214,7 @@ export async function renderStudio(ctx) {
       mk('sticker', openAssetsPanel, 'Assets'),
       mk('music', openMusic, t('studio.music')),
       mk('stats', () => openStatsSheet(recorder.stats(), current), t('studio.stats')),
-      mk('save', () => doSave(true).then(() => toast(t('toast.saved'), { icon: '💕' })), t('common.save')),
+      mk('save', () => doSave(true).then(() => toast(t('toast.saved'))), t('common.save')),
     );
 
     d.append(toolbar, quick, palette, actions);
@@ -319,7 +321,7 @@ function refreshToolUI() {
     if (b.dataset.tool === 'pencil-sim') { b.classList.toggle('active', !!engine.pencilMode); return; }
     b.classList.toggle('active', b.dataset.tool === engine.tool);
   });
-  const sl = $('#st-size'); if (sl) sl.value = engine.brushSize;
+  const sl = $('#st-size'); if (sl) { sl.value = engine.brushSize; sl.style.setProperty('--fill', ((sl.value - sl.min) / (sl.max - sl.min) * 100) + '%'); }
   updateSizeDot();
   const core = $('#st-wheel-core'); if (core) core.style.background = engine.color;
 }
@@ -337,18 +339,37 @@ function refreshColorUI() {
   const core = $('#st-wheel-core'); if (core) core.style.background = engine.color;
   updateSizeDot();
 }
+// Paleta pastel curada — la barra de colores nunca se ve vacía y mantiene el
+// aire premium. Se muestran primero favoritos y recientes, luego la curada.
+const QUICK_COLORS = [
+  '#5a4e58', '#2a2730', '#ffffff', '#ef92a6', '#f7b7c6', '#e8935f', '#ffd7bd',
+  '#f6d365', '#a98fd4', '#c9b6ec', '#8fd0bd', '#b8e0d2', '#bcd8f2', '#7db5e6', '#d64f6a',
+];
 function refreshPalette() {
   const p = $('#st-palette'); if (!p) return;
   p.innerHTML = '';
+  // "+" abre la rueda de color completa.
+  p.append(el('button', { class: 'st-swatch st-swatch-add', html: icon('add'), 'aria-label': 'Elegir color', onclick: openColorWheel }));
   const { favs, recent } = store.get().colors;
   const seen = new Set();
   const put = (c, fav) => {
-    if (seen.has(c)) return; seen.add(c);
+    if (!c || seen.has(c)) return; seen.add(c);
     const b = el('button', { class: 'st-swatch' + (c === engine.color ? ' active' : '') + (fav ? ' fav' : ''), style: { background: c }, onclick: () => { engine.setColor(c); refreshColorUI(); refreshPalette(); } });
+    // Mantener presionado un color → lo fija/quita de favoritos.
+    let lp; b.addEventListener('pointerdown', () => { lp = setTimeout(() => toggleFav(c), 500); });
+    b.addEventListener('pointerup', () => clearTimeout(lp));
+    b.addEventListener('pointerleave', () => clearTimeout(lp));
     p.append(b);
   };
   favs.forEach((c) => put(c, true));
   [...engine.recentColors, ...recent].forEach((c) => put(c, false));
+  QUICK_COLORS.forEach((c) => put(c, false));
+}
+function toggleFav(c) {
+  const cols = store.get().colors; const favs = cols.favs || [];
+  const next = favs.includes(c) ? favs.filter((x) => x !== c) : [c, ...favs].slice(0, 16);
+  store.set('colors', { ...cols, favs: next }); refreshPalette();
+  import('../core/sounds.js').then((m) => m.playFx('tap')).catch(() => {});
 }
 
 // ---------- Save ----------

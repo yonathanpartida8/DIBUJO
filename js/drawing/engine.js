@@ -253,6 +253,9 @@ export class Engine {
   }
   _onDown(e) {
     if (this._playbackLock) return;
+    // Rechazo de palma: si un lápiz óptico ya está trazando, los toques
+    // accidentales de la palma o de otro dedo se ignoran por completo.
+    if (e.pointerType === 'touch' && this._drawing && this._penStroke) return;
     this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     // ---- Lápiz virtual: lógica multitáctil dedicada y estable ----
@@ -288,6 +291,7 @@ export class Engine {
     if (this.tool === 'bucket') return this._doFill(pt);
     if (this.tool === 'eyedropper') return this._doPick(pt);
     if (['line', 'rect', 'ellipse', 'triangle', 'star', 'polygon', 'heart'].includes(this.tool)) { this._shapeStart = pt; return; }
+    this._penStroke = e.pointerType === 'pen';
     this._beginStroke(e.clientX, e.clientY, this._pressure(e));
     bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: true });
   }
@@ -332,10 +336,16 @@ export class Engine {
   // Extiende el trazo activo hacia unas coordenadas de pantalla (con suavizado).
   _paintStep(clientX, clientY, pressure) {
     const raw = this.clientToDoc(clientX, clientY);
-    const k = 1 - (this.stabilizer * 0.7 + this.smoothing * 0.25);
+    // Suavizado ADAPTATIVO (estilo one-euro): mucho filtrado cuando el trazo
+    // va lento (quita el temblor) y poco cuando va rápido (quita el retraso).
+    const dx = raw.x - this._smoothPt.x, dy = raw.y - this._smoothPt.y;
+    const speed = Math.hypot(dx, dy);
+    const baseK = 1 - (this.stabilizer * 0.7 + this.smoothing * 0.25);
+    const adapt = Math.min(1, speed / 14);
+    const k = baseK + (1 - baseK) * adapt;
     this._smoothPt = {
-      x: this._smoothPt.x + (raw.x - this._smoothPt.x) * k,
-      y: this._smoothPt.y + (raw.y - this._smoothPt.y) * k,
+      x: this._smoothPt.x + dx * k,
+      y: this._smoothPt.y + dy * k,
       p: pressure,
     };
     const drawPt = this._rulerGuard ? this._guardRuler(this._smoothPt) : this._smoothPt;
@@ -349,6 +359,7 @@ export class Engine {
   }
 
   _onMove(e) {
+    if (e.pointerType === 'touch' && this._drawing && this._penStroke) return; // palma ignorada
     if (this._pointers.has(e.pointerId)) this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     // Lápiz virtual: mueve la punta con el primer dedo; dibuja solo con 2;
@@ -373,6 +384,7 @@ export class Engine {
     bus.emit('engine:pointer', { x: e.clientX, y: e.clientY, down: true });
   }
   _onUp(e) {
+    if (e.pointerType === 'touch' && this._drawing && this._penStroke && !this._pointers.has(e.pointerId)) return; // palma ignorada
     this._pointers.delete(e.pointerId);
     const gestureFloor = this.pencilMode ? 3 : 2;
     if (this._pointers.size < gestureFloor) this._gesture = null;
@@ -384,6 +396,7 @@ export class Engine {
   }
   _commitStroke(e) {
     this._drawing = false;
+    this._penStroke = false;
     const layer = this.stack.active;
     if (this._painter && !this._painter.direct) { layer.restore(this._beforeSnapshot); this._painter.compositeTo(layer.ctx); }
     this.history.push({ type: 'layer', layerId: layer.id, before: this._beforeSnapshot, after: layer.snapshot() });
@@ -412,7 +425,7 @@ export class Engine {
       const layer = this.stack.active;
       if (this._beforeSnapshot) layer.restore(this._beforeSnapshot);
       this.recorder?.cancelStroke();
-      this._drawing = false; this._painter = null; this._op = null; this._rulerGuard = null;
+      this._drawing = false; this._penStroke = false; this._painter = null; this._op = null; this._rulerGuard = null;
       import('../core/sounds.js').then((m) => m.stopScratch());
       this.requestComposite();
     }

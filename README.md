@@ -5,6 +5,28 @@ distancia y en tiempo real. Interfaz premium en **español latino**, pastel
 refinado (no infantil), iconografía SVG profesional (sin emojis en la UI),
 inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
 
+## Novedades v8 (tinta, WebGL2, color y táctil)
+
+- **Pinceles como tinta, no como objetos**: los pinceles de tinta (pluma,
+  bolígrafo, marcador, pincel redondo, caligrafía, plano, acuarela, borrador)
+  se dibujan como una **cinta de ancho variable** — perfil redondo que engorda
+  y afina con la presión, o de plumilla (chisel) con grosor según la dirección.
+  Se acabaron los círculos encadenados. Lápiz, carboncillo, tiza, crayón,
+  aerógrafo y salpicado conservan su grano. Idéntico en vivo y en reproducción.
+- **Renderizado WebGL2** (opcional, `js/gl/canvas-gl.js`): compone las capas en
+  la GPU (normal/multiply/screen) con respaldo 2D automático si el navegador no
+  lo soporta o aparece un blend no soportado. La exportación siempre usa el
+  aplanado 2D. Interruptor en **Ajustes › Dibujo** (activo por defecto).
+- **Barra de colores** rehecha: paleta pastel curada siempre disponible, botón
+  “+” para la rueda completa, anillo doble en el color activo, punto de
+  favorito y fijar/soltar favoritos con pulsación larga. **Barra de grosor**
+  con relleno de progreso.
+- **Táctil mejorado**: suavizado **adaptativo** (mucho filtrado en trazos
+  lentos → sin temblor; poco en trazos rápidos → sin retraso) y **rechazo de
+  palma** (con un lápiz óptico activo, los toques accidentales se ignoran).
+- **Corrección**: el mapeo de coordenadas usa la hoja (siempre visible), no el
+  lienzo 2D que puede ocultarse en modo WebGL2.
+
 ## Novedades v7 (iconografía y pulido)
 
 - **Set de iconos rediseñado**: cada herramienta de dibujo es ahora un

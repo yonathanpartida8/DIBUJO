@@ -65,11 +65,23 @@
 .st-slider-wrap { flex: 1; display: flex; align-items: center; gap: 8px; }
 .st-slider-wrap .lab { font-size: 0.7rem; color: var(--text-2); width: 22px; text-align: center; }
 
-/* Palette (recent colors) */
-.st-palette { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+/* Barra de colores (favoritos + recientes + paleta pastel) */
+.st-palette { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; padding: 3px 2px; scroll-snap-type: x proximity; }
 .st-palette::-webkit-scrollbar { display: none; }
-.st-swatch { width: 30px; height: 30px; border-radius: 50%; flex: none; border: 2px solid var(--surface); box-shadow: var(--shadow-sm); }
-.st-swatch.active { transform: scale(1.15); border-color: var(--primary); }
+.st-swatch {
+  width: 32px; height: 32px; border-radius: 50%; flex: none; scroll-snap-align: start;
+  border: 2px solid var(--surface); box-shadow: 0 2px 6px rgba(60,40,50,.14);
+  transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease); position: relative;
+}
+.st-swatch:active { transform: scale(0.9); }
+/* Anillo doble en el color activo. */
+.st-swatch.active { transform: scale(1.12); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary), 0 3px 8px rgba(60,40,50,.2); }
+/* Punto de favorito. */
+.st-swatch.fav::after { content: ''; position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--rose-deep, #e06e86); border: 1.5px solid var(--surface); }
+/* Botón "+" para abrir la rueda de color. */
+.st-swatch-add { display: grid; place-items: center; background: var(--surface-inset); border: 1.5px dashed var(--line-2); box-shadow: none; }
+.st-swatch-add svg { width: 16px; height: 16px; stroke: var(--text-2); fill: none; }
+.st-swatch-add:active { background: var(--surface-3); }
 
 /* Layers panel (bottom sheet reuse) */
 .layer-row { display: flex; align-items: center; gap: var(--s-3); padding: 10px; border-radius: var(--r-md); background: var(--surface-inset); margin-bottom: 8px; }
@@ -227,9 +239,10 @@
    v6 — Control de grosor compacto + botón enviar
    ============================================================ */
 .st-size-bar { gap: 10px; }
-.slider.slim { height: 4px; }
-.slider.slim::-webkit-slider-thumb { width: 18px; height: 18px; border-width: 4px; }
-.slider.slim::-moz-range-thumb { width: 18px; height: 18px; border-width: 4px; }
+/* Barra de grosor con relleno (progreso en color primario). */
+.slider.slim { height: 6px; background: linear-gradient(90deg, var(--rose) 0%, var(--lav) var(--fill, 30%), var(--line-2) var(--fill, 30%)); }
+.slider.slim::-webkit-slider-thumb { width: 20px; height: 20px; border-width: 4px; }
+.slider.slim::-moz-range-thumb { width: 20px; height: 20px; border-width: 4px; }
 .st-sizenum {
   min-width: 40px; height: 32px; padding: 0 10px; border-radius: 999px;
   background: var(--surface-inset); border: 1px solid var(--line);
