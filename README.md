@@ -5,6 +5,39 @@ distancia y en tiempo real. Interfaz premium en **español latino**, pastel
 refinado (no infantil), iconografía SVG profesional (sin emojis en la UI),
 inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
 
+## Novedades v9 (trazos, iconos y rendimiento)
+
+- **Se acabaron los "objetos duplicados"**: los pinceles con grano (lápiz,
+  carboncillo, tiza, crayón) ya no estampan discos visibles al agrandar el
+  pincel. Todo el detalle interno va en fracciones del radio y la cantidad de
+  motas crece con el área, así la textura se ve igual a 4 px y a 200 px.
+- **Sellos en caché**: cada dab con grano se hornea una vez en su propio
+  lienzo. La "mordida" del papel queda local al dab (antes agujereaba los
+  anteriores) y se calcula una sola vez → mucho más rápido.
+- **Espaciado siempre denso** (tope: 14 % del radio): nada de cadenas de
+  discos separados a tamaños grandes.
+- **Marcador y pincel plano rehechos**: la plumilla sigue el trazo (banda de
+  ancho constante) en vez de un ángulo fijo que se volvía una cuchilla. La
+  cinta usa la orientación previa de la plumilla, así no se abre en abanico ni
+  deja rayado en las curvas. Caligrafía conserva su grueso/fino.
+- **Aerógrafo y salpicado** ahora escalan de verdad.
+- **Menos parpadeos y más FPS**: el estado previo del trazo se restaura con
+  `drawImage` (antes `putImageData` de 8 MB por frame) y WebGL2 sube a la GPU
+  solo el rectángulo tocado (`texSubImage2D`) en vez de la capa completa.
+  El cambio GL/2D ya no toca el DOM en cada frame.
+- **Iconos modernos**: los que quedaban en relleno negro sólido (pen, bucket,
+  dropper, shapes, transform, play, pause, share, eye, lock, chat) pasan a
+  contorno; refrescados save, settings, layers, ruler, select, sticker y
+  textSize. Set coherente y actual.
+- **Objetos más bonitos**: asas blancas con icono de color (rotar con tallo,
+  eliminar, redimensionar), selección con halo suave y objetos añadidos más
+  grandes para moverlos con comodidad.
+- **GIFs fáciles**: categorías rápidas, miniaturas grandes a dos columnas y
+  opciones de **pegar enlace** o **subir GIF**. Corregido el fallo de CORS que
+  hacía que algunos GIF no se añadieran, y el guardado ya no se rompe por un
+  GIF externo.
+- **El mini reproductor** ya no tapa la barra de grosor ni la paleta.
+
 ## Novedades v8 (tinta, WebGL2, color y táctil)
 
 - **Pinceles como tinta, no como objetos**: los pinceles de tinta (pluma,

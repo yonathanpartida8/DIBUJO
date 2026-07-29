@@ -664,13 +664,49 @@ function openMedia() {
     if (id === 'sticker') return emojiTab(panel, s, 'sticker');
   }
 }
+// Buscador de GIFs: categorías rápidas, miniaturas grandes y alternativas
+// (pegar enlace o subir archivo) para que añadir un GIF sea siempre fácil.
+const GIF_CATS = ['bear love', 'amor', 'abrazo', 'beso', 'corazones', 'lindo', 'gatitos', 'feliz', 'buenas noches', 'te extraño'];
 function gifTab(panel, s) {
-  const input = el('input', { class: 'input', placeholder: t('common.search') + ' GIFs (Klipy)…' });
+  const input = el('input', { class: 'input', placeholder: t('common.search') + ' GIFs…' });
+  const chips = el('div', { class: 'scroll-x gif-chips' });
   const grid = el('div', { class: 'gif-grid', style: { marginTop: '10px' } });
-  panel.append(input, grid);
-  const load = async (q) => { grid.innerHTML = '<div class="sk" style="height:90px"></div>'.repeat(6); const res = await searchGifs(q || 'bear love'); grid.innerHTML = ''; if (!res.length) { grid.append(el('p', { style: { color: 'var(--text-2)', gridColumn: '1/-1' }, text: 'No hay resultados o sin conexión.' })); return; } res.forEach((g) => grid.append(el('img', { src: g.preview, loading: 'lazy', onclick: () => { addImageMedia(g.url, 'gif'); s.close(); toast('GIF añadido'); } }))); };
-  let tmr; input.oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => load(input.value.trim()), 400); };
-  load('bear love'); // el buscador siempre inicia con "bear love" 🐻💕
+  const add = (url) => { addImageMedia(url, 'gif'); s.close(); toast('GIF añadido — arrástralo para colocarlo'); };
+
+  const load = async (q) => {
+    grid.innerHTML = '<div class="sk" style="height:120px;border-radius:14px"></div>'.repeat(6);
+    const res = await searchGifs(q || 'bear love');
+    grid.innerHTML = '';
+    if (!res.length) {
+      grid.append(el('div', { class: 'gif-empty' }, [
+        el('div', { class: 'big-ic', html: icon('gif') }),
+        el('div', { text: 'Sin resultados o sin conexión.' }),
+        el('div', { style: { color: 'var(--text-3)', fontSize: '0.8rem' }, text: 'Puedes pegar un enlace o subir un GIF abajo.' }),
+      ]));
+      return;
+    }
+    res.forEach((g) => grid.append(el('button', { class: 'gif-cell', onclick: () => add(g.url) }, [
+      el('img', { src: g.preview, loading: 'lazy', alt: 'GIF' }),
+    ])));
+  };
+
+  GIF_CATS.forEach((c, i) => chips.append(el('button', {
+    class: 'chip' + (i === 0 ? ' on' : ''), text: c,
+    onclick: (e) => { chips.querySelectorAll('.chip').forEach((x) => x.classList.remove('on')); e.currentTarget.classList.add('on'); input.value = c; load(c); },
+  })));
+
+  const actions = el('div', { class: 'gif-actions' }, [
+    el('button', { class: 'btn btn-ghost', html: icon('link') + ' Pegar enlace', onclick: async () => {
+      const url = await promptDialog({ title: 'Enlace del GIF', placeholder: 'https://…/algo.gif' });
+      if (url && /^https?:\/\//i.test(url.trim())) add(url.trim());
+      else if (url) toast('Ese enlace no parece válido');
+    } }),
+    el('button', { class: 'btn btn-ghost', html: icon('upload') + ' Subir GIF', onclick: () => pickImageFile((src) => add(src)) }),
+  ]);
+
+  panel.append(input, chips, grid, actions);
+  let tmr; input.oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => load(input.value.trim()), 350); };
+  load('bear love');
 }
 const TEXT_FONTS = [
   ['Nunito, sans-serif', 'Redonda'],
@@ -705,14 +741,31 @@ function emojiTab(panel, s, type) {
     ? '😀😍🥰😘😊🥺😎🤩😴🤗😇🙃😜🤔😅😂🥳😳😌❤️🧡💛💚💙💜🤍🖤💗💖💕💞💓💘💌💋🌸🌺🌷🌹🌻🌼✨⭐🌟💫🔥🌈☀️🌙⛅🍓🍑🍒🍰🧁🍩🍭🎀🎁🐻🐰🐱🐶🦊🐼🐨🦄🕊️'.match(/./gu)
     : '🐻💐🌈🦋🎀🍰🌸💖🐰🌷☕🍓🧸🎈🌙⭐🐱🌻🍭🎨🖌️💌🕊️🫧🌼🍀🐨🐣🌟💫🎵🪴'.match(/./gu);
   const grid = el('div', { class: 'emoji-grid' });
-  emojis.forEach((e) => grid.append(el('button', { text: e, onclick: () => { const size = type === 'emoji' ? 80 : 140; engine.addMedia({ type: type === 'emoji' ? 'text' : 'text', text: e, fontSize: size, x: engine.docW / 2 - size / 2, y: engine.docH / 2 - size / 2, w: size, h: size, rot: 0, opacity: 1 }); s.close(); } })));
+  emojis.forEach((e) => grid.append(el('button', { text: e, onclick: () => { const size = type === 'emoji' ? 170 : 240; engine.addMedia({ type: type === 'emoji' ? 'text' : 'text', text: e, fontSize: size, x: engine.docW / 2 - size / 2, y: engine.docH / 2 - size / 2, w: size, h: size, rot: 0, opacity: 1 }); s.close(); } })));
   panel.append(grid);
 }
+// Añade una imagen/GIF al lienzo. Muchos CDN de GIF no envían cabeceras CORS:
+// con crossOrigin="anonymous" la carga fallaba en silencio y el GIF "no se
+// añadía". Ahora se reintenta sin CORS para que SIEMPRE se pueda insertar
+// (el guardado se protege aparte, en engine.thumbnail).
 function addImageMedia(src, type) {
-  const img = new Image(); img.crossOrigin = 'anonymous';
-  img.onload = () => { const maxW = engine.docW * 0.6; const scale = Math.min(1, maxW / img.width); const w = img.width * scale, h = img.height * scale; const m = engine.addMedia({ type, src, x: (engine.docW - w) / 2, y: (engine.docH - h) / 2, w, h, rot: 0, opacity: 1 }); m._img = img; engine.renderMedia(); };
-  img.onerror = () => toast('No se pudo cargar la imagen');
-  img.src = src;
+  const place = (img, noCors) => {
+    const maxW = engine.docW * 0.6;
+    const scale = Math.min(1, maxW / (img.width || 200));
+    const w = (img.width || 200) * scale, h = (img.height || 200) * scale;
+    const m = engine.addMedia({ type, src, x: (engine.docW - w) / 2, y: (engine.docH - h) / 2, w, h, rot: 0, opacity: 1 });
+    m._img = img; if (noCors) m._noCors = true;
+    selectedMediaId = m.id;           // queda seleccionado: se puede mover ya
+    engine.renderMedia();
+  };
+  const tryLoad = (useCors) => {
+    const img = new Image();
+    if (useCors) img.crossOrigin = 'anonymous';
+    img.onload = () => place(img, !useCors);
+    img.onerror = () => { if (useCors) tryLoad(false); else toast('No se pudo cargar la imagen'); };
+    img.src = src;
+  };
+  tryLoad(true);
 }
 function pickImageFile(cb) {
   const inp = el('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
@@ -735,9 +788,10 @@ function renderMediaOverlay(media) {
     else obj.append(el('img', { src: m.paused && m._still ? m._still : (m._img ? m._img.src : m.src) }));
     if (m.id === selectedMediaId) {
       obj.append(
-        el('div', { class: 'handle del', html: icon('close'), onpointerdown: (e) => { e.stopPropagation(); engine.removeMedia(m.id); selectedMediaId = null; } }),
-        el('div', { class: 'handle br', onpointerdown: (e) => startResize(e, m) }),
-        el('div', { class: 'handle rot', onpointerdown: (e) => startRotate(e, m) }),
+        el('div', { class: 'rot-stem' }),
+        el('div', { class: 'handle del', html: icon('close'), title: 'Eliminar', onpointerdown: (e) => { e.stopPropagation(); engine.removeMedia(m.id); selectedMediaId = null; } }),
+        el('div', { class: 'handle br', html: icon('transform'), title: 'Cambiar tamaño', onpointerdown: (e) => startResize(e, m) }),
+        el('div', { class: 'handle rot', html: icon('rotate'), title: 'Rotar', onpointerdown: (e) => startRotate(e, m) }),
       );
       layer.append(objContextBar(m));
     }

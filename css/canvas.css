@@ -119,21 +119,39 @@
 /* Media object handles on canvas — contra-escalados con --inv para que
    SIEMPRE midan lo mismo en pantalla (grandes y tocables, sin hacer zoom). */
 .media-layer { position: absolute; inset: 0; z-index: 55; pointer-events: none; }
-.media-obj { position: absolute; pointer-events: auto; touch-action: none; border: calc(2.5px * var(--inv, 1)) dashed transparent; border-radius: 6px; }
-.media-obj.selected { border-color: var(--primary); }
+.media-obj { position: absolute; pointer-events: auto; touch-action: none; border: calc(2px * var(--inv, 1)) solid transparent; border-radius: calc(10px * var(--inv, 1)); }
+/* Selección: marco fino con halo suave (antes era un borde de guiones). */
+.media-obj.selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 calc(1px * var(--inv, 1)) rgba(255,255,255,.9),
+              0 calc(6px * var(--inv, 1)) calc(20px * var(--inv, 1)) rgba(239,146,166,.28);
+}
 .media-obj img, .media-obj .txt { width: 100%; height: 100%; object-fit: contain; }
 .media-obj .txt { display: grid; place-items: center; white-space: pre; }
-.media-obj .handle {
-  position: absolute;
-  width: calc(40px * var(--inv, 1)); height: calc(40px * var(--inv, 1));
-  border-radius: 50%; background: var(--primary);
-  border: calc(3px * var(--inv, 1)) solid #fff;
-  box-shadow: var(--shadow-sm);
+/* Tallo que une el objeto con el asa de rotar (referencia visual clara). */
+.media-obj .rot-stem {
+  position: absolute; left: 50%; top: calc(-34px * var(--inv, 1));
+  width: calc(2px * var(--inv, 1)); height: calc(34px * var(--inv, 1));
+  transform: translateX(-50%); background: var(--primary); opacity: .55; border-radius: 2px;
 }
-.media-obj .handle.br { right: calc(-20px * var(--inv, 1)); bottom: calc(-20px * var(--inv, 1)); cursor: nwse-resize; }
-.media-obj .handle.rot { right: calc(-20px * var(--inv, 1)); top: calc(-56px * var(--inv, 1)); background: var(--accent); }
-.media-obj .handle.del { left: calc(-20px * var(--inv, 1)); top: calc(-20px * var(--inv, 1)); background: #e88; display: grid; place-items: center; }
-.media-obj .handle.del svg { width: calc(20px * var(--inv, 1)); height: calc(20px * var(--inv, 1)); fill: #fff; }
+/* Asas: pastilla blanca con icono de color — moderno y muy visible. */
+.media-obj .handle {
+  position: absolute; display: grid; place-items: center;
+  width: calc(38px * var(--inv, 1)); height: calc(38px * var(--inv, 1));
+  border-radius: 50%; background: #fff;
+  border: calc(2px * var(--inv, 1)) solid rgba(255,255,255,.95);
+  box-shadow: 0 calc(3px * var(--inv, 1)) calc(12px * var(--inv, 1)) rgba(60,40,50,.30);
+  transition: transform var(--dur-2) var(--ease-soft);
+}
+.media-obj .handle:active { transform: scale(0.88); }
+.media-obj .handle svg {
+  width: calc(20px * var(--inv, 1)); height: calc(20px * var(--inv, 1));
+  fill: none; stroke-width: 2.1;
+}
+.media-obj .handle.br { right: calc(-19px * var(--inv, 1)); bottom: calc(-19px * var(--inv, 1)); cursor: nwse-resize; color: var(--primary); }
+.media-obj .handle.rot { left: 50%; margin-left: calc(-19px * var(--inv, 1)); top: calc(-60px * var(--inv, 1)); color: var(--accent); }
+.media-obj .handle.del { left: calc(-19px * var(--inv, 1)); top: calc(-19px * var(--inv, 1)); color: #e06a7e; }
+.media-obj .handle.del svg { stroke: currentColor; }
 
 /* Zoom pill */
 .zoom-pill { position: absolute; right: 8px; bottom: 8px; z-index: 15; }
@@ -143,9 +161,21 @@
 .emoji-grid button { font-size: 1.5rem; padding: 6px; border-radius: var(--r-sm); }
 .emoji-grid button:active { background: var(--surface-3); }
 
-/* GIF results */
-.gif-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 300px; overflow-y: auto; }
-.gif-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--r-sm); }
+/* Resultados de GIF — miniaturas grandes y fáciles de tocar */
+.gif-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-height: 46dvh; overflow-y: auto; scrollbar-width: none; }
+.gif-grid::-webkit-scrollbar { display: none; }
+.gif-cell {
+  padding: 0; border-radius: var(--r-md); overflow: hidden; background: var(--surface-3);
+  box-shadow: var(--shadow-sm); transition: transform var(--dur-2) var(--ease-soft);
+}
+.gif-cell:active { transform: scale(0.95); }
+.gif-cell img { width: 100%; aspect-ratio: 1.15; object-fit: cover; display: block; }
+.gif-chips { display: flex; gap: 6px; margin-top: 10px; padding-bottom: 2px; }
+.gif-chips .chip { white-space: nowrap; }
+.gif-chips .chip.on { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+.gif-empty { grid-column: 1/-1; text-align: center; color: var(--text-2); padding: 22px 10px; display: grid; gap: 6px; justify-items: center; }
+.gif-actions { display: flex; gap: 8px; margin-top: 12px; }
+.gif-actions .btn { flex: 1; }
 
 /* ============================================================
    v2 — Modo zen, regla física y lápiz virtual

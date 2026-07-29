@@ -599,13 +599,19 @@ export class Engine {
     return c;
   }
   thumbnail(size = 400) {
-    const src = this.flatten();
-    const c = document.createElement('canvas');
-    const ratio = this.docH / this.docW; c.width = size; c.height = Math.round(size * ratio);
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-    ctx.drawImage(src, 0, 0, c.width, c.height);
-    return c.toDataURL('image/png');
+    const make = (includeMedia) => {
+      const src = this.flatten({ includeMedia });
+      const c = document.createElement('canvas');
+      const ratio = this.docH / this.docW; c.width = size; c.height = Math.round(size * ratio);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(src, 0, 0, c.width, c.height);
+      return c.toDataURL('image/png');
+    };
+    // Un GIF externo sin CORS "contamina" el lienzo y toDataURL lanza error;
+    // en ese caso se genera la miniatura sin los objetos para no romper el
+    // guardado (el dibujo nunca se pierde por un GIF).
+    try { return make(true); } catch { try { return make(false); } catch { return ''; } }
   }
   serialize() {
     return { w: this.docW, h: this.docH, paper: this.paper, stack: this.stack.serialize(), media: this.media.map((m) => { const { _img, ...rest } = m; return rest; }) };
