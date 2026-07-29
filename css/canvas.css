@@ -34,6 +34,7 @@
 }
 .st-canvas-frame canvas { position: absolute; top: 0; left: 0; display: block; touch-action: none; }
 .st-canvas-frame .paper { z-index: 0; }
+.st-canvas-frame .gl-cv { z-index: 1; pointer-events: none; }
 .st-canvas-frame .overlay-cv { z-index: 60; pointer-events: none; }
 
 /* Floating side rail (tools) */

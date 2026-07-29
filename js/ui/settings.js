@@ -41,6 +41,7 @@ export async function renderSettings(ctx) {
   view.append(rows([
     choiceRow('gem', t('set.quality'), qualityLabel(s.settings.quality), [['low', 'Baja'], ['med', 'Media'], ['high', 'Alta']], s.settings.quality, (v) => store.set('settings', { quality: v })),
     choiceRow('zap', t('set.performance'), perfLabel(s.settings.performance), [['battery', 'Ahorro de batería'], ['balanced', 'Equilibrado'], ['smooth', 'Máxima fluidez']], s.settings.performance, (v) => store.set('settings', { performance: v })),
+    toggleRow('sparkle', 'Renderizado WebGL2', s.settings.webgl2 !== false, (v) => { store.set('settings', { webgl2: v }); bus.emit('settings:webgl2', v); }),
     sliderRow('toolBrush', t('studio.stabilizer'), s.settings.stabilizerDefault, (v) => store.set('settings', { stabilizerDefault: v })),
     sliderRow('line', t('studio.smoothing'), s.settings.smoothingDefault, (v) => store.set('settings', { smoothingDefault: v })),
   ]));

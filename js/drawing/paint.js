@@ -1,7 +1,13 @@
 // Shared stroke painter — used by BOTH live drawing and playback so a recorded
-// stroke reproduces pixel-for-pixel. Strokes render into a per-stroke buffer at
-// per-dab flow, then composite onto the layer at the stroke opacity + blend mode
-// (this gives uniform opacity, no dark overlap seams within one stroke).
+// stroke reproduces pixel-for-pixel.
+//
+// v8 — Tinta continua: los pinceles de tinta (pluma, bolígrafo, marcador,
+// pincel, caligrafía, plano, acuarela, borrador) se dibujan como una CINTA
+// de ancho variable (perfil redondo o de plumilla/chisel) rellena en un búfer
+// por trazo y compuesta a la opacidad del trazo. Nada de círculos encadenados
+// ni "objetos" estampados: fluye como tinta real, con presión y afinado.
+// Los pinceles con grano (lápiz, carboncillo, tiza, crayón, aerógrafo,
+// salpicado) siguen usando dabs sembrados para conservar su textura.
 import { BRUSHES, makeRng } from './brushes.js';
 import { dist, lerp } from '../core/utils.js';
 
@@ -30,10 +36,12 @@ export class StrokePainter {
     this.w = w; this.h = h;
     this.brush = BRUSHES[op.tool] || BRUSHES.pen;
     this.erase = !!this.brush.erase;
-    // "direct": pinta sobre la capa sin buffer (borrador y difuminador); el
+    this.ink = this.brush.ink || null;           // perfil de tinta (cinta continua)
+    this.isInk = !!this.ink;
+    // "direct": pinta sobre la capa sin búfer (borrador y difuminador); el
     // motor NO debe restaurar el snapshot cada frame para estos.
     this.direct = this.erase || !!this.brush.smudge;
-    if (this.brush.smudge) { this.reset(); return; } // el difuminador no usa buffer
+    if (this.brush.smudge) { this.reset(); return; } // el difuminador no usa búfer
     if (!this.erase) {
       this.buffer = makeCanvas(w, h);
       this.bctx = this.buffer.getContext('2d');
@@ -54,6 +62,16 @@ export class StrokePainter {
     if (this.brush.noPressure || this.op.pressure === false) return Math.max(0.4, base);
     const pr = 0.32 + 0.68 * (p ?? 1);
     return Math.max(0.4, base * pr);
+  }
+  // Radio de la tinta redonda: presión + un mínimo afinado para puntas finas.
+  _inkR(p) {
+    const prof = this.ink;
+    let base = (this.op.size || 4) / 2;
+    if (prof && prof.scale) base *= prof.scale;
+    if (this.brush.noPressure || this.op.pressure === false) return Math.max(prof?.min ?? 0.35, base);
+    const lo = prof?.taper ?? 0.35;         // fracción mínima del ancho a presión 0
+    const pr = lo + (1 - lo) * (p ?? 1);
+    return Math.max(prof?.min ?? 0.35, base * pr);
   }
   _stampAt(ctx, x, y, p) {
     const r = this._radius(p);
@@ -78,35 +96,72 @@ export class StrokePainter {
       }
     }
   }
-  // Segmento de LÍNEA CONTINUA (pluma, bolígrafo, borrador…): nada de
-  // círculos encadenados — trazo suave con extremos y uniones redondeados.
-  _lineSegment(ctx, a, b, hex, alpha) {
-    const w = this._radius((a.p + b.p) / 2) * 2;
-    ctx.save();
-    ctx.strokeStyle = hex; ctx.globalAlpha = alpha;
-    ctx.lineWidth = Math.max(0.6, w);
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-    ctx.restore();
+
+  // ---- Cinta de tinta continua ----------------------------------------
+  // Un segmento se rellena como polígono (cuadrilátero) con extremos y
+  // uniones redondeados (perfil redondo) o como banda de plumilla de ángulo
+  // fijo (perfil chisel) para caligrafía / marcador / pincel plano.
+  _inkSegment(ctx, a, b, first) {
+    const prof = this.ink;
+    if (prof.profile === 'chisel') {
+      const ang = prof.angle ?? -0.5;
+      const hl = ((this.op.size || 6) * (prof.nib ?? 0.5));
+      const hx = Math.cos(ang) * hl, hy = Math.sin(ang) * hl;
+      // Solapamos el arranque hacia atrás ~1px: cada cuadrilátero cubre la
+      // costura anti-alias del anterior → banda de tinta uniforme, sin rayado.
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+      const ov = first ? 0 : 1.1, ax = a.x - (dx / len) * ov, ay = a.y - (dy / len) * ov;
+      ctx.beginPath();
+      ctx.moveTo(ax + hx, ay + hy);
+      ctx.lineTo(ax - hx, ay - hy);
+      ctx.lineTo(b.x - hx, b.y - hy);
+      ctx.lineTo(b.x + hx, b.y + hy);
+      ctx.closePath(); ctx.fill();
+      // tapa redondeada en los extremos de la plumilla para evitar puntas duras
+      const rc = Math.max(0.6, hl * (prof.round ?? 0.16));
+      ctx.beginPath(); ctx.arc(b.x, b.y, rc, 0, 7); ctx.fill();
+      if (first) { ctx.beginPath(); ctx.arc(a.x, a.y, rc, 0, 7); ctx.fill(); }
+      return;
+    }
+    // Perfil redondo: ancho por presión, con caps redondos.
+    const ra = this._inkR(a.p), rb = this._inkR(b.p);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len > 0.001) {
+      const nx = -dy / len, ny = dx / len;
+      ctx.beginPath();
+      ctx.moveTo(a.x + nx * ra, a.y + ny * ra);
+      ctx.lineTo(a.x - nx * ra, a.y - ny * ra);
+      ctx.lineTo(b.x - nx * rb, b.y - ny * rb);
+      ctx.lineTo(b.x + nx * rb, b.y + ny * rb);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(b.x, b.y, rb, 0, 7); ctx.fill();      // unión + cap final
+    if (first) { ctx.beginPath(); ctx.arc(a.x, a.y, ra, 0, 7); ctx.fill(); } // cap inicial
   }
-  _lineSet(ctx, a, b, hex, alpha) {
-    this._lineSegment(ctx, a, b, hex, alpha);
+  _inkSet(ctx, a, b, hex, alpha, first) {
+    ctx.save();
+    ctx.fillStyle = hex; ctx.globalAlpha = alpha;
+    this._inkSegment(ctx, a, b, first);
     const sym = this.op.sym;
-    if (!sym || sym.mode === 'none') return;
-    const ax = sym.ax ?? this.w / 2, ay = sym.ay ?? this.h / 2;
-    const mir = (fx, fy) => this._lineSegment(ctx, { x: fx(a.x, a.y), y: fy(a.x, a.y), p: a.p }, { x: fx(b.x, b.y), y: fy(b.x, b.y), p: b.p }, hex, alpha);
-    if (sym.mode === 'h' || sym.mode === 'hv') mir((x) => 2 * ax - x, (_, y) => y);
-    if (sym.mode === 'v' || sym.mode === 'hv') mir((x) => x, (_, y) => 2 * ay - y);
-    if (sym.mode === 'hv') mir((x) => 2 * ax - x, (_, y) => 2 * ay - y);
-    if (sym.mode === 'radial') {
-      const n = Math.max(2, sym.count || 6);
-      for (let i = 1; i < n; i++) {
-        const th = (i * 2 * Math.PI) / n, c = Math.cos(th), s = Math.sin(th);
-        const rot = (px, py) => ({ x: ax + (px - ax) * c - (py - ay) * s, y: ay + (px - ax) * s + (py - ay) * c });
-        const ra = rot(a.x, a.y), rb = rot(b.x, b.y);
-        this._lineSegment(ctx, { ...ra, p: a.p }, { ...rb, p: b.p }, hex, alpha);
+    if (sym && sym.mode !== 'none') {
+      const ax = sym.ax ?? this.w / 2, ay = sym.ay ?? this.h / 2;
+      const seg = (fa, fb) => this._inkSegment(ctx, fa, fb, first);
+      const mir = (mx, my) => seg({ x: mx(a.x), y: my(a.y), p: a.p }, { x: mx(b.x), y: my(b.y), p: b.p });
+      if (sym.mode === 'h' || sym.mode === 'hv') mir((x) => 2 * ax - x, (y) => y);
+      if (sym.mode === 'v' || sym.mode === 'hv') mir((x) => x, (y) => 2 * ay - y);
+      if (sym.mode === 'hv') mir((x) => 2 * ax - x, (y) => 2 * ay - y);
+      if (sym.mode === 'radial') {
+        const n = Math.max(2, sym.count || 6);
+        for (let i = 1; i < n; i++) {
+          const th = (i * 2 * Math.PI) / n, c = Math.cos(th), s = Math.sin(th);
+          const rot = (px, py) => ({ x: ax + (px - ax) * c - (py - ay) * s, y: ay + (px - ax) * s + (py - ay) * c });
+          const ra = rot(a.x, a.y), rb = rot(b.x, b.y);
+          seg({ ...ra, p: a.p }, { ...rb, p: b.p });
+        }
       }
     }
+    ctx.restore();
   }
 
   // Difuminador REAL: arrastra los píxeles ya pintados de la capa en la
@@ -121,28 +176,30 @@ export class StrokePainter {
     layerCtx.restore();
   }
 
-  // Add a point; draws dabs from previous point along the segment into buffer/layer.
+  // Add a point; draws into buffer/layer from the previous point.
   addPoint(pt, layerCtx) {
-    // Difuminador: opera directo sobre la capa, sin buffer ni color.
+    // Difuminador: opera directo sobre la capa, sin búfer ni color.
     if (this.brush.smudge) {
       if (this.last) this._smudgeStep(layerCtx, this.last, pt);
       this.last = pt;
       return;
     }
-    // Pinceles de línea continua.
-    if (this.brush.smooth) {
+    // Tinta continua (incluye el borrador, que borra con la misma cinta).
+    if (this.isInk) {
       const ctx = this.erase ? layerCtx : this.bctx;
-      if (this.erase) { ctx.save(); ctx.globalCompositeOperation = 'destination-out'; }
-      if (this.last) this._lineSet(ctx, this.last, pt, this.op.color, this.erase ? (this.op.opacity ?? 1) : 1);
-      else this._lineSet(ctx, pt, { ...pt, x: pt.x + 0.01 }, this.op.color, this.erase ? (this.op.opacity ?? 1) : 1);
+      const alpha = this.erase ? (this.op.opacity ?? 1) : 1;
+      if (this.erase) { ctx.save(); ctx.globalCompositeOperation = 'destination-out'; if (this.op.ruler) applyRulerClip(ctx, this.op.ruler, this.w, this.h); }
+      if (this.last) { this.angle = Math.atan2(pt.y - this.last.y, pt.x - this.last.x); this._inkSet(ctx, this.last, pt, this.op.color, alpha, false); }
+      else this._inkSet(ctx, pt, { ...pt, x: pt.x + 0.01 }, this.op.color, alpha, true); // punto inicial (dab redondo)
       if (this.erase) ctx.restore();
       this.last = pt;
       return;
     }
+    // Pinceles con grano: dabs sembrados a lo largo del segmento.
     const target = this.erase ? layerCtx : this.bctx;
     if (this.erase) {
       layerCtx.save(); layerCtx.globalCompositeOperation = 'destination-out'; layerCtx.globalAlpha = this.op.opacity ?? 1;
-      if (this.op.ruler) applyRulerClip(layerCtx, this.op.ruler, this.w, this.h); // la regla también frena al borrador
+      if (this.op.ruler) applyRulerClip(layerCtx, this.op.ruler, this.w, this.h);
     }
     if (!this.last) {
       this._stampSet(target, pt.x, pt.y, pt.p);

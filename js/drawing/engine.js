@@ -43,6 +43,11 @@ export class Engine {
     this.onChange = null;      // dirty callback
     this.recentColors = ['#5a4e58', '#ef92a6', '#a98fd4', '#b8e0d2', '#ffd7bd', '#bcd8f2'];
     this._quality = store.get().settings.quality;
+    // Renderizado WebGL2 (opcional). Se activa si el navegador lo soporta y el
+    // ajuste está encendido; si falla en cualquier frame, cae a 2D sin cortes.
+    this.useGL = store.get().settings.webgl2 !== false;
+    this._glRev = 0;   // versión estructural (capas no activas)
+    this._glFrame = 0; // contador de frames (capa activa)
   }
 
   // ---------- Mount ----------
@@ -51,16 +56,19 @@ export class Engine {
     this.frame = el('div', { class: 'st-canvas-frame' });
     this.paperCanvas = el('canvas', { class: 'paper', width: this.docW, height: this.docH });
     this.display = el('canvas', { width: this.docW, height: this.docH });
+    this.glCanvas = el('canvas', { class: 'gl-cv', width: this.docW, height: this.docH });
     this.overlay = el('canvas', { class: 'overlay-cv', width: this.docW, height: this.docH });
     this.mediaLayer = el('div', { class: 'media-layer' });
-    this.frame.append(this.paperCanvas, this.display, this.overlay, this.mediaLayer);
+    this.frame.append(this.paperCanvas, this.display, this.glCanvas, this.overlay, this.mediaLayer);
     stageEl.append(this.frame);
     this.pctx = this.paperCanvas.getContext('2d');
     this.dctx = this.display.getContext('2d');
     this.octx = this.overlay.getContext('2d');
+    this._initGL();
     this._fit();
     this._bindInput();
     window.addEventListener('resize', () => this._fit());
+    bus.on('settings:webgl2', (v) => this.setUseGL(v));
     this.renderPaper();
   }
   _fit() {
@@ -169,11 +177,45 @@ export class Engine {
     c.restore();
   }
 
+  // ---------- WebGL2 (opcional) ----------
+  _initGL() {
+    if (!this.useGL) { this._showGL(false); return; }
+    import('../gl/canvas-gl.js').then(({ GLCompositor }) => {
+      const comp = new GLCompositor(this.glCanvas);
+      if (comp.ok) { this.glComp = comp; this.requestComposite(); }
+      else { this.useGL = false; this._showGL(false); }
+    }).catch(() => { this.useGL = false; this._showGL(false); });
+  }
+  _showGL(on) {
+    if (!this.glCanvas) return;
+    this.glCanvas.style.display = on ? '' : 'none';
+    this.display.style.display = on ? 'none' : '';
+  }
+  setUseGL(on) {
+    this.useGL = !!on;
+    if (on && !this.glComp) { this._initGL(); }
+    else if (!on) { this._showGL(false); this.requestComposite(); }
+    else this.requestComposite();
+  }
+
   // ---------- Composite ----------
   requestComposite() {
     if (this._compositePending) return;
     this._compositePending = true;
-    requestAnimationFrame(() => { this._compositePending = false; this.stack.compositeTo(this.dctx); });
+    requestAnimationFrame(() => {
+      this._compositePending = false;
+      if (this.useGL && this.glComp && this.glComp.ok && this.stack) {
+        // Fuera de un trazo activo, cualquier capa pudo cambiar (deshacer,
+        // relleno, capas, carga) → refresca todas las texturas. Durante el
+        // trazo solo cambia la capa activa (se sube cada frame por sí sola).
+        if (!this._drawing) this._glRev++;
+        this.glComp.resize(this.docW, this.docH);
+        const ok = this.glComp.render(this.stack.layers, this.stack.activeId, this._glRev, ++this._glFrame);
+        if (ok) { this._showGL(true); return; }
+      }
+      this._showGL(false);
+      this.stack.compositeTo(this.dctx);
+    });
   }
   markDirty() { this.onChange?.(); }
 
@@ -181,7 +223,9 @@ export class Engine {
   clientToDoc(clientX, clientY) {
     // Modo lápiz virtual: el trazo sale desde la punta del lápiz, no del dedo.
     if (this.pencilMode) { clientX += this.pencilOffset.x; clientY += this.pencilOffset.y; }
-    const rect = this.display.getBoundingClientRect();
+    // Referencia geométrica SIEMPRE visible (el display 2D puede estar oculto en
+    // modo WebGL2; un elemento display:none devuelve un rect en cero → NaN).
+    const rect = this.paperCanvas.getBoundingClientRect();
     return {
       x: clamp((clientX - rect.left) / rect.width * this.docW, 0, this.docW),
       y: clamp((clientY - rect.top) / rect.height * this.docH, 0, this.docH),

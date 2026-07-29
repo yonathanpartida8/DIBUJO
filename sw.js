@@ -1,5 +1,5 @@
 // Service worker — offline-first app shell for Dibujo PWA.
-const VERSION = 'dibujo-v7.0.0';
+const VERSION = 'dibujo-v8.0.0';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 
@@ -36,6 +36,7 @@ const SHELL_ASSETS = [
   './js/drawing/player.js',
   './js/drawing/ruler.js',
   './js/gl/aurora.js',
+  './js/gl/canvas-gl.js',
   './js/media/klipy.js',
   './js/ui/icons.js',
   './js/ui/home.js',

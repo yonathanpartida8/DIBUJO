@@ -104,13 +104,12 @@ export const BRUSHES = {
 
   /* ---------- MARCADORES ---------- */
   marker: {
-    id: 'marker', name: 'Marcador', cat: 'marker', size: 24, opacity: 0.55, spacing: 0.035,
+    id: 'marker', name: 'Marcador', cat: 'marker', size: 24, opacity: 0.5, spacing: 0.035,
     blend: 'multiply', noPressure: true,
-    // Punta biselada plana: banda ancha, translúcida y uniforme que se
-    // oscurece al superponer pasadas (multiply), como un marcador real.
-    dab(ctx, x, y, r, hex, o, hard, ang) {
-      chiselDab(ctx, x, y, r * 1.35, r * 0.5, ang, hex, o);
-    },
+    // Tinta de plumilla ancha: banda translúcida y uniforme que se oscurece al
+    // superponer pasadas (multiply), como un marcador real. Cinta continua.
+    ink: { profile: 'chisel', angle: -0.5, nib: 0.62, round: 0.14 },
+    dab(ctx, x, y, r, hex, o, hard, ang) { chiselDab(ctx, x, y, r * 1.35, r * 0.5, ang, hex, o); },
   },
   pixel: {
     id: 'pixel', name: 'Pixel', cat: 'marker', size: 8, opacity: 1, spacing: 0.5, pixel: true, noPressure: true,
@@ -123,60 +122,44 @@ export const BRUSHES = {
 
   /* ---------- PLUMAS (tinta nítida) ---------- */
   pen: {
-    id: 'pen', name: 'Pluma', cat: 'pen', size: 7, opacity: 1, spacing: 0.06, smooth: true,
-    // Tinta limpia con borde nítido; la presión afina la línea.
+    id: 'pen', name: 'Pluma', cat: 'pen', size: 7, opacity: 1, spacing: 0.06,
+    // Tinta limpia de borde nítido; la presión afina la línea. Cinta continua.
+    ink: { profile: 'round', taper: 0.42 },
     dab(ctx, x, y, r, hex, o) { hardDab(ctx, x, y, r, hex, o); },
   },
   ballpoint: {
-    id: 'ballpoint', name: 'Bolígrafo', cat: 'pen', size: 3.2, opacity: 0.9, spacing: 0.09, smooth: true,
-    // Línea fina constante con pequeñas acumulaciones de tinta ocasionales.
-    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      hardDab(ctx, x, y, r * 0.9, hex, o * (0.8 + rng() * 0.2));
-      if (rng() < 0.035) hardDab(ctx, x, y, r * 1.7, hex, o * 0.55); // gotita de tinta
-    },
+    id: 'ballpoint', name: 'Bolígrafo', cat: 'pen', size: 3.4, opacity: 0.92, spacing: 0.09,
+    // Línea fina y constante, apenas sensible a la presión.
+    ink: { profile: 'round', taper: 0.7, min: 0.5 },
+    dab(ctx, x, y, r, hex, o, hard, ang, rng) { hardDab(ctx, x, y, r * 0.9, hex, o); },
   },
   calligraphy: {
     id: 'calligraphy', name: 'Caligrafía', cat: 'pen', size: 22, opacity: 1, spacing: 0.025, noPressure: true,
     // Plumilla ancha en ángulo fijo: contraste dramático entre subidas y bajadas.
-    dab(ctx, x, y, r, hex, o) {
-      chiselDab(ctx, x, y, r, r * 0.16, -0.6, hex, o);
-    },
+    ink: { profile: 'chisel', angle: -0.62, nib: 0.5, round: 0.1 },
+    dab(ctx, x, y, r, hex, o) { chiselDab(ctx, x, y, r, r * 0.16, -0.6, hex, o); },
   },
 
   /* ---------- PINCELES (húmedos) ---------- */
   brush: {
     id: 'brush', name: 'Pincel redondo', cat: 'brush', size: 20, opacity: 0.95, spacing: 0.05,
-    // Pincel redondo con borde suave y afinado marcado por presión.
+    // Pincel redondo: cinta suave que engorda y afina con la presión.
+    ink: { profile: 'round', taper: 0.28 },
     dab(ctx, x, y, r, hex, o, hard) { softDab(ctx, x, y, r, hex, o, hard ?? 0.72); },
   },
   watercolor: {
-    id: 'watercolor', name: 'Acuarela', cat: 'brush', size: 40, opacity: 0.14, spacing: 0.28,
+    id: 'watercolor', name: 'Acuarela', cat: 'brush', size: 38, opacity: 0.22, spacing: 0.28,
     blend: 'multiply',
-    // Aguada translúcida con borde que se encharca (más pigmento en el filo).
-    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      const jx = (rng() - 0.5) * r * 0.4, jy = (rng() - 0.5) * r * 0.4;
-      softDab(ctx, x + jx, y + jy, r, hex, o, 0.05);
-      // filo encharcado
-      ctx.save();
-      ctx.strokeStyle = rgba(hex, o * 0.7);
-      ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.arc(x + jx, y + jy, r * (0.86 + rng() * 0.1), rng() * 6.28, rng() * 6.28 + 3.5); ctx.stroke();
-      ctx.restore();
-    },
+    // Aguada translúcida: cinta ancha a baja opacidad que se acumula (multiply).
+    ink: { profile: 'round', taper: 0.4 },
+    dab(ctx, x, y, r, hex, o, hard) { softDab(ctx, x, y, r, hex, o, 0.05); },
   },
 
   flat: {
-    id: 'flat', name: 'Pincel plano', cat: 'brush', size: 26, opacity: 0.9, spacing: 0.03,
-    // Brocha plana: banda ancha orientada al trazo con cerdas secas en los bordes.
-    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      chiselDab(ctx, x, y, r * 0.38, r * 1.25, ang, hex, o);
-      // cerdas: pequeñas vetas en los extremos de la brocha
-      for (let i = 0; i < 3; i++) {
-        const off = (rng() - 0.5) * r * 2.3;
-        const px = x - Math.sin(ang) * off, py = y + Math.cos(ang) * off;
-        if (Math.abs(off) > r * 0.8) hardDab(ctx, px, py, 0.8, hex, o * 0.5 * rng());
-      }
-    },
+    id: 'flat', name: 'Pincel plano', cat: 'brush', size: 26, opacity: 0.92, spacing: 0.03,
+    // Brocha plana: banda ancha de plumilla, ancho variable según la dirección.
+    ink: { profile: 'chisel', angle: 0.35, nib: 0.6, round: 0.12 },
+    dab(ctx, x, y, r, hex, o, hard, ang) { chiselDab(ctx, x, y, r * 0.38, r * 1.25, ang, hex, o); },
   },
   smudge: {
     id: 'smudge', name: 'Difuminador', cat: 'brush', size: 34, opacity: 1, spacing: 0.1, smudge: true,
@@ -204,7 +187,8 @@ export const BRUSHES = {
 
   /* ---------- BORRADORES ---------- */
   eraser: {
-    id: 'eraser', name: 'Borrador', cat: 'erase', size: 22, opacity: 1, spacing: 0.1, erase: true, smooth: true,
+    id: 'eraser', name: 'Borrador', cat: 'erase', size: 22, opacity: 1, spacing: 0.1, erase: true,
+    ink: { profile: 'round', taper: 0.6 },
     dab(ctx, x, y, r, hex, o) { hardDab(ctx, x, y, r, '#000', o); },
   },
   eraserSoft: {
