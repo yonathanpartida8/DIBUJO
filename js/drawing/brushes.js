@@ -43,62 +43,91 @@ function chiselDab(ctx, x, y, rx, ry, ang, hex, alpha) {
   ctx.restore();
 }
 
+// ---- Grano invariante a la escala -------------------------------------
+// TODO el detalle interno de un pincel con grano se define en FRACCIONES del
+// radio, y la cantidad de motas crece con el ÁREA (con techo por rendimiento).
+// Así un pincel de 4 px y otro de 200 px tienen la MISMA textura, sin que
+// aparezcan "objetos duplicados", motas sueltas ni líneas separadas.
+const specks = (r, per = 0.9, max = 220) => Math.max(4, Math.min(max, Math.round(r * per)));
+// Cantidad por ÁREA: la textura mantiene la misma densidad visual al crecer el
+// pincel (un pincel 4× más grande necesita ~16× más motas, no 4×). Los sellos
+// van en caché, así que podemos permitirnos miles de motas finas.
+const areaN = (r, dens = 0.06, max = 2600) => Math.max(6, Math.min(max, Math.round(r * r * dens)));
+// Núcleo opaco: se pinta a alfa 1 dentro del búfer del trazo, así los dabs
+// contiguos se UNEN en vez de acumularse (nada de discos oscuros visibles).
+function coreDab(ctx, x, y, r, hex) {
+  ctx.fillStyle = rgba(hex, 1);
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+}
+// Mordida: quita pigmento con huecos irregulares → textura seca del papel.
+function bite(ctx, x, y, r, rng, n, minF, maxF) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < n; i++) {
+    const a = rng() * 6.283, d = Math.sqrt(rng()) * r;
+    const rr = r * (minF + rng() * (maxF - minF));
+    ctx.fillStyle = 'rgba(0,0,0,' + (0.35 + rng() * 0.65) + ')';
+    ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, rr, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+
 export const BRUSHES = {
   /* ---------- LÁPICES (secos, con grano) ---------- */
   pencil: {
-    id: 'pencil', name: 'Lápiz', cat: 'pencil', size: 5, opacity: 0.9, spacing: 0.14,
-    // Grafito fino: núcleo delgado + estrías de grano a lo largo del trazo.
+    id: 'pencil', name: 'Lápiz', cat: 'pencil', size: 5, opacity: 0.92, spacing: 0.06, grain: true,
+    // Grafito: núcleo unido (alfa 1 en el búfer) mordido por el grano del papel.
+    // Todo en fracciones de r → misma textura a 4 px y a 200 px.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      hardDab(ctx, x, y, r * 0.55, hex, o * 0.5);
-      const n = 3 + (r | 0);
+      coreDab(ctx, x, y, r * 0.94, hex);
+      // Grano FINO y abundante (por área) → textura de papel, no burbujas.
+      bite(ctx, x, y, r, rng, areaN(r, 0.10, 3000), 0.012, 0.045);
+      // estrías finas en el sentido del trazo (grano del grafito)
+      const n = areaN(r, 0.05, 1400);
+      ctx.save(); ctx.globalCompositeOperation = 'destination-out';
       for (let i = 0; i < n; i++) {
-        const along = (rng() - 0.5) * r * 2.2, side = (rng() - 0.5) * r * 1.4;
+        const along = (rng() - 0.5) * r * 1.9, side = (rng() - 0.5) * r * 1.8;
         const px = x + Math.cos(ang) * along - Math.sin(ang) * side;
         const py = y + Math.sin(ang) * along + Math.cos(ang) * side;
-        hardDab(ctx, px, py, 0.5, hex, o * 0.35 * rng());
+        ctx.fillStyle = 'rgba(0,0,0,' + (0.15 + rng() * 0.4) + ')';
+        ctx.beginPath(); ctx.arc(px, py, r * 0.018, 0, 7); ctx.fill();
       }
+      ctx.restore();
     },
   },
   charcoal: {
-    id: 'charcoal', name: 'Carboncillo', cat: 'pencil', size: 18, opacity: 0.85, spacing: 0.12,
-    // Oscuro y polvoriento: mancha con arrastre trasero (smear).
+    id: 'charcoal', name: 'Carboncillo', cat: 'pencil', size: 18, opacity: 0.88, spacing: 0.07, grain: true,
+    // Oscuro y polvoriento: núcleo suave + polvo muy fino alrededor.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      softDab(ctx, x, y, r * 0.8, hex, o * 0.5, 0.25);
-      // arrastre hacia atrás del movimiento
-      for (let i = 0; i < 4; i++) {
-        const back = rng() * r * 1.6;
-        softDab(ctx, x - Math.cos(ang) * back, y - Math.sin(ang) * back, r * (0.5 - i * 0.08), hex, o * 0.18, 0.15);
-      }
-      const n = 10 + (r | 0);
+      softDab(ctx, x, y, r, hex, 0.9, 0.5);
+      bite(ctx, x, y, r * 0.95, rng, areaN(r, 0.09, 2800), 0.014, 0.05);
+      const n = areaN(r, 0.05, 1600);
       for (let i = 0; i < n; i++) {
-        const a = rng() * 6.283, d = Math.pow(rng(), 0.4) * r;
-        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, 0.5 + rng() * 1.2, hex, o * (0.2 + rng() * 0.45));
+        const a = rng() * 6.283, d = Math.pow(rng(), 0.4) * r * 1.22;
+        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, r * (0.008 + rng() * 0.022), hex, 0.3 + rng() * 0.5);
       }
     },
   },
   chalk: {
-    id: 'chalk', name: 'Tiza', cat: 'pencil', size: 20, opacity: 0.8, spacing: 0.16,
-    // Grano grueso y saltos: cubre de forma irregular, ideal sobre fondos oscuros.
+    id: 'chalk', name: 'Tiza', cat: 'pencil', size: 20, opacity: 0.85, spacing: 0.08, grain: true,
+    // Tiza: cuerpo presente pero muy mordido — grano grueso pero uniforme.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      const n = 16 + (r | 0) * 2;
+      coreDab(ctx, x, y, r * 0.96, hex);
+      bite(ctx, x, y, r, rng, areaN(r, 0.16, 3600), 0.018, 0.06);
+      const n = areaN(r, 0.03, 900);
       for (let i = 0; i < n; i++) {
-        if (rng() < 0.45) continue; // saltos de tiza
-        const a = rng() * 6.283, d = Math.sqrt(rng()) * r;
-        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, 0.7 + rng() * 1.1, hex, o * (0.25 + rng() * 0.4));
+        const a = rng() * 6.283, d = r * (0.88 + rng() * 0.4);
+        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, r * (0.01 + rng() * 0.025), hex, 0.3 + rng() * 0.4);
       }
     },
   },
   crayon: {
-    id: 'crayon', name: 'Crayón', cat: 'pencil', size: 14, opacity: 0.9, spacing: 0.1,
-    // Cera: trazos gruesos con huecos donde la cera no toca el papel.
+    id: 'crayon', name: 'Crayón', cat: 'pencil', size: 14, opacity: 0.95, spacing: 0.05, grain: true,
+    // Cera: cuerpo denso con microhuecos donde la cera no toca el papel
+    // (antes eran líneas paralelas separadas — ya no).
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      const n = 6 + (r | 0);
-      for (let i = 0; i < n; i++) {
-        if (rng() < 0.3) continue;
-        const side = (rng() - 0.5) * r * 2;
-        const px = x - Math.sin(ang) * side, py = y + Math.cos(ang) * side;
-        hardDab(ctx, px, py, 1 + rng() * 1.6, hex, o * (0.5 + rng() * 0.4));
-      }
+      coreDab(ctx, x, y, r * 0.95, hex);
+      bite(ctx, x, y, r, rng, areaN(r, 0.11, 3000), 0.02, 0.055);
     },
   },
 
@@ -108,7 +137,7 @@ export const BRUSHES = {
     blend: 'multiply', noPressure: true,
     // Tinta de plumilla ancha: banda translúcida y uniforme que se oscurece al
     // superponer pasadas (multiply), como un marcador real. Cinta continua.
-    ink: { profile: 'chisel', angle: -0.5, nib: 0.62, round: 0.14 },
+    ink: { profile: 'chisel', follow: true, tilt: 0.30, nib: 1.0, round: 0.42 },
     dab(ctx, x, y, r, hex, o, hard, ang) { chiselDab(ctx, x, y, r * 1.35, r * 0.5, ang, hex, o); },
   },
   pixel: {
@@ -136,7 +165,7 @@ export const BRUSHES = {
   calligraphy: {
     id: 'calligraphy', name: 'Caligrafía', cat: 'pen', size: 22, opacity: 1, spacing: 0.025, noPressure: true,
     // Plumilla ancha en ángulo fijo: contraste dramático entre subidas y bajadas.
-    ink: { profile: 'chisel', angle: -0.62, nib: 0.5, round: 0.1 },
+    ink: { profile: 'chisel', angle: -0.62, nib: 1.0, round: 0.16 },
     dab(ctx, x, y, r, hex, o) { chiselDab(ctx, x, y, r, r * 0.16, -0.6, hex, o); },
   },
 
@@ -158,7 +187,7 @@ export const BRUSHES = {
   flat: {
     id: 'flat', name: 'Pincel plano', cat: 'brush', size: 26, opacity: 0.92, spacing: 0.03,
     // Brocha plana: banda ancha de plumilla, ancho variable según la dirección.
-    ink: { profile: 'chisel', angle: 0.35, nib: 0.6, round: 0.12 },
+    ink: { profile: 'chisel', follow: true, tilt: 0.14, nib: 1.0, round: 0.30 },
     dab(ctx, x, y, r, hex, o, hard, ang) { chiselDab(ctx, x, y, r * 0.38, r * 1.25, ang, hex, o); },
   },
   smudge: {
@@ -169,18 +198,28 @@ export const BRUSHES = {
 
   /* ---------- AERÓGRAFOS ---------- */
   airbrush: {
-    id: 'airbrush', name: 'Aerógrafo', cat: 'spray', size: 52, opacity: 0.04, spacing: 0.26,
-    // Niebla amplia y uniforme para degradados y sombras.
-    dab(ctx, x, y, r, hex, o) { softDab(ctx, x, y, r, hex, o, 0.02); },
+    id: 'airbrush', name: 'Aerógrafo', cat: 'spray', size: 52, opacity: 0.5, spacing: 0.1,
+    // Niebla amplia y uniforme para degradados y sombras. La opacidad vive en
+    // el trazo (no por dab), así se ve igual de suave a cualquier tamaño.
+    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
+      softDab(ctx, x, y, r, hex, 0.1, 0.0);
+      // salpicado fino de aerosol, proporcional al radio
+      const n = specks(r, 0.5, 90);
+      for (let i = 0; i < n; i++) {
+        const a = rng() * 6.283, d = Math.pow(rng(), 0.6) * r;
+        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, r * 0.02, hex, 0.06 + rng() * 0.1);
+      }
+    },
   },
   splatter: {
-    id: 'splatter', name: 'Salpicado', cat: 'spray', size: 34, opacity: 0.5, spacing: 0.6,
-    // Gotas dispersas de distinto tamaño — textura y energía.
+    id: 'splatter', name: 'Salpicado', cat: 'spray', size: 34, opacity: 0.85, spacing: 0.34,
+    // Gotas dispersas de distinto tamaño — proporcionales al pincel.
     dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      const n = 5 + ((r / 4) | 0);
+      const n = specks(r, 0.7, 120);
       for (let i = 0; i < n; i++) {
         const a = rng() * 6.283, d = Math.pow(rng(), 0.5) * r;
-        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, 0.6 + rng() * rng() * 3.4, hex, o * (0.5 + rng() * 0.5));
+        const rr = r * (0.012 + rng() * rng() * 0.075);
+        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, rr, hex, 0.55 + rng() * 0.45);
       }
     },
   },

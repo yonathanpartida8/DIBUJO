@@ -359,6 +359,12 @@
   border: 1px solid var(--line); border-radius: var(--r-pill); box-shadow: var(--shadow-md);
   max-width: 70vw; animation: toastIn var(--dur-2) var(--ease-soft);
 }
+/* En el editor la barra inferior es alta: el mini reproductor se va ARRIBA
+   para no tapar el grosor ni la paleta de colores. */
+body[data-route^="studio"] .vinyl-mini {
+  top: calc(84px + var(--safe-t, 0px)); bottom: auto; left: 50%; transform: translateX(-50%);
+  max-width: min(84vw, 340px);
+}
 .vm-disc { font-size: 1.2rem; }
 .vm-disc.spin { animation: vinylSpin 3s linear infinite; display: inline-block; }
 .vm-name { font-size: 0.8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

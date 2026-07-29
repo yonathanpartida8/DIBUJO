@@ -188,6 +188,8 @@ export class Engine {
   }
   _showGL(on) {
     if (!this.glCanvas) return;
+    if (this._glShown === on) return;   // evita tocar el DOM cada frame (parpadeos)
+    this._glShown = on;
     this.glCanvas.style.display = on ? '' : 'none';
     this.display.style.display = on ? 'none' : '';
   }
@@ -210,8 +212,10 @@ export class Engine {
         // trazo solo cambia la capa activa (se sube cada frame por sí sola).
         if (!this._drawing) this._glRev++;
         this.glComp.resize(this.docW, this.docH);
-        const ok = this.glComp.render(this.stack.layers, this.stack.activeId, this._glRev, ++this._glFrame);
-        if (ok) { this._showGL(true); return; }
+        // Zona tocada por el trazo en curso → subida parcial a la GPU.
+        const rect = (this._drawing && this._painter) ? this._painter.dirty : null;
+        const ok = this.glComp.render(this.stack.layers, this.stack.activeId, this._glRev, ++this._glFrame, rect);
+        if (ok) { this._painter?.clearDirty(); this._showGL(true); return; }
       }
       this._showGL(false);
       this.stack.compositeTo(this.dctx);
@@ -314,6 +318,16 @@ export class Engine {
     // Hoja infinita: grosor coherente en pantalla aun con muchísimo zoom.
     const effSize = this.paper.infinite ? Math.max(0.5, this.brushSize / this.zoom) : this.brushSize;
     this._beforeSnapshot = layer.snapshot();
+    // Copia en LIENZO del estado previo. Restaurar cada frame con drawImage es
+    // muchísimo más rápido que putImageData de 8 MB (era la causa principal de
+    // los parpadeos y del tirón al dibujar).
+    if (!this._beforeCv || this._beforeCv.width !== this.docW || this._beforeCv.height !== this.docH) {
+      this._beforeCv = document.createElement('canvas');
+      this._beforeCv.width = this.docW; this._beforeCv.height = this.docH;
+      this._beforeCtx = this._beforeCv.getContext('2d');
+    }
+    this._beforeCtx.clearRect(0, 0, this.docW, this.docH);
+    this._beforeCtx.drawImage(layer.canvas, 0, 0);
     this._smoothPt = { x: pt.x, y: pt.y, p: pt.p };
     const seed = (Math.random() * 2 ** 31) | 0;
     this._op = {
@@ -352,9 +366,14 @@ export class Engine {
     this._painter.addPoint(drawPt, this.stack.active.ctx);
     this.recorder?.addPoint(drawPt.x, drawPt.y, drawPt.p);
   }
+  // Restauración rápida del estado previo del trazo (drawImage, no putImageData).
+  _restoreBefore(layer) {
+    if (this._beforeCv) { layer.ctx.clearRect(0, 0, this.docW, this.docH); layer.ctx.drawImage(this._beforeCv, 0, 0); }
+    else if (this._beforeSnapshot) layer.restore(this._beforeSnapshot);
+  }
   _flushPaintFrame() {
     const layer = this.stack.active;
-    if (!this._painter.direct) { layer.restore(this._beforeSnapshot); this._painter.compositeTo(layer.ctx); }
+    if (!this._painter.direct) { this._restoreBefore(layer); this._painter.compositeTo(layer.ctx); }
     this.requestComposite();
   }
 
@@ -398,7 +417,7 @@ export class Engine {
     this._drawing = false;
     this._penStroke = false;
     const layer = this.stack.active;
-    if (this._painter && !this._painter.direct) { layer.restore(this._beforeSnapshot); this._painter.compositeTo(layer.ctx); }
+    if (this._painter && !this._painter.direct) { this._restoreBefore(layer); this._painter.compositeTo(layer.ctx); }
     this.history.push({ type: 'layer', layerId: layer.id, before: this._beforeSnapshot, after: layer.snapshot() });
     this.recorder?.endStroke();
     if (this._op) bus.emit('engine:strokeDone', this._op);
@@ -423,7 +442,7 @@ export class Engine {
   _endStrokeAbort() {
     if (this._drawing && this._painter) {
       const layer = this.stack.active;
-      if (this._beforeSnapshot) layer.restore(this._beforeSnapshot);
+      this._restoreBefore(layer);
       this.recorder?.cancelStroke();
       this._drawing = false; this._penStroke = false; this._painter = null; this._op = null; this._rulerGuard = null;
       import('../core/sounds.js').then((m) => m.stopScratch());

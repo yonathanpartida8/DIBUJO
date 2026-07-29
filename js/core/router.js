@@ -28,6 +28,7 @@ export async function go(name, params = {}) {
   }
   // Studio, Home y pantallas de entrada ocupan todo (sin barra de pestañas).
   document.body.dataset.fullscreen = ['home', 'studio', 'studio-new', 'player', 'login', 'pairing', 'onboarding'].includes(name) ? '1' : '0';
+  document.body.dataset.route = name; // permite ajustes de CSS por pantalla
   bus.emit('route:change', name);
   import('./sounds.js').then((m) => m.playFx('transition')).catch(() => {});
   try { history.replaceState({ route: name }, '', `?route=${name}`); } catch {}
