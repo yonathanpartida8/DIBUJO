@@ -108,19 +108,6 @@ export const BRUSHES = {
       }
     },
   },
-  chalk: {
-    id: 'chalk', name: 'Tiza', cat: 'pencil', size: 20, opacity: 0.85, spacing: 0.08, grain: true,
-    // Tiza: cuerpo presente pero muy mordido — grano grueso pero uniforme.
-    dab(ctx, x, y, r, hex, o, hard, ang, rng) {
-      coreDab(ctx, x, y, r * 0.96, hex);
-      bite(ctx, x, y, r, rng, areaN(r, 0.16, 3600), 0.018, 0.06);
-      const n = areaN(r, 0.03, 900);
-      for (let i = 0; i < n; i++) {
-        const a = rng() * 6.283, d = r * (0.88 + rng() * 0.4);
-        hardDab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d, r * (0.01 + rng() * 0.025), hex, 0.3 + rng() * 0.4);
-      }
-    },
-  },
   crayon: {
     id: 'crayon', name: 'Crayón', cat: 'pencil', size: 14, opacity: 0.95, spacing: 0.05, grain: true,
     // Cera: cuerpo denso con microhuecos donde la cera no toca el papel
@@ -133,20 +120,12 @@ export const BRUSHES = {
 
   /* ---------- MARCADORES ---------- */
   marker: {
-    id: 'marker', name: 'Marcador', cat: 'marker', size: 24, opacity: 0.5, spacing: 0.035,
+    id: 'marker', name: 'Marcador', cat: 'pen', size: 24, opacity: 0.5, spacing: 0.035,
     blend: 'multiply', noPressure: true,
     // Tinta de plumilla ancha: banda translúcida y uniforme que se oscurece al
     // superponer pasadas (multiply), como un marcador real. Cinta continua.
     ink: { profile: 'chisel', follow: true, tilt: 0.30, nib: 1.0, round: 0.42 },
     dab(ctx, x, y, r, hex, o, hard, ang) { chiselDab(ctx, x, y, r * 1.35, r * 0.5, ang, hex, o); },
-  },
-  pixel: {
-    id: 'pixel', name: 'Pixel', cat: 'marker', size: 8, opacity: 1, spacing: 0.5, pixel: true, noPressure: true,
-    dab(ctx, x, y, r, hex, o) {
-      const s = Math.max(1, Math.round(r * 2));
-      ctx.fillStyle = rgba(hex, o);
-      ctx.fillRect(Math.round(x / s) * s - s / 2, Math.round(y / s) * s - s / 2, s, s);
-    },
   },
 
   /* ---------- PLUMAS (tinta nítida) ---------- */
@@ -234,20 +213,20 @@ export const BRUSHES = {
     id: 'eraserSoft', name: 'Borrador suave', cat: 'erase', size: 30, opacity: 0.35, spacing: 0.12, erase: true,
     dab(ctx, x, y, r, hex, o) { softDab(ctx, x, y, r, '#000', o, 0.05); },
   },
-  eraserPixel: {
-    id: 'eraserPixel', name: 'Borrador píxel', cat: 'erase', size: 10, opacity: 1, spacing: 0.5, erase: true, pixel: true, noPressure: true,
-    dab(ctx, x, y, r) { const s = Math.max(1, Math.round(r * 2)); ctx.fillStyle = '#000'; ctx.fillRect(Math.round(x / s) * s - s / 2, Math.round(y / s) * s - s / 2, s, s); },
-  },
 };
+
+// Compatibilidad: dibujos guardados con herramientas que ya no existen se
+// reproducen con su equivalente más cercano en vez de caer a la pluma.
+export const BRUSH_ALIAS = { chalk: 'charcoal', pixel: 'marker', eraserPixel: 'eraser' };
+export const resolveBrush = (id) => BRUSHES[id] || BRUSHES[BRUSH_ALIAS[id]] || BRUSHES.pen;
 
 export const BRUSH_LIST = Object.values(BRUSHES);
 
 // Categorías del editor (orden de presentación).
 export const BRUSH_CATS = {
   pencil: 'Lápices',
-  marker: 'Marcadores',
-  pen: 'Plumas',
+  pen: 'Tinta',
   brush: 'Pinceles',
-  spray: 'Aerógrafos',
-  erase: 'Borradores',
+  spray: 'Aerógrafo',
+  erase: 'Borrador',
 };

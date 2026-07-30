@@ -8,7 +8,7 @@
 // ni "objetos" estampados: fluye como tinta real, con presión y afinado.
 // Los pinceles con grano (lápiz, carboncillo, tiza, crayón, aerógrafo,
 // salpicado) siguen usando dabs sembrados para conservar su textura.
-import { BRUSHES, makeRng } from './brushes.js';
+import { BRUSHES, makeRng, resolveBrush } from './brushes.js';
 import { dist, lerp } from '../core/utils.js';
 
 function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
@@ -34,7 +34,7 @@ export class StrokePainter {
   constructor(op, w, h) {
     this.op = op;
     this.w = w; this.h = h;
-    this.brush = BRUSHES[op.tool] || BRUSHES.pen;
+    this.brush = resolveBrush(op.tool);
     this.erase = !!this.brush.erase;
     this.ink = this.brush.ink || null;           // perfil de tinta (cinta continua)
     this.isInk = !!this.ink;

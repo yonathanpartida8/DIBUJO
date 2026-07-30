@@ -23,26 +23,29 @@ let skipSaveOnLeave = false; // "Salir sin guardar" evita que leave() re-guarde
 
 // Icono SVG por herramienta (la UI no usa emojis).
 const TOOL_ICON = {
-  pencil: 'toolPencil', charcoal: 'toolCharcoal', chalk: 'toolChalk', crayon: 'toolCrayon',
-  marker: 'toolMarker', pixel: 'toolPixelB',
+  pencil: 'toolPencil', charcoal: 'toolCharcoal', crayon: 'toolCrayon',
+  marker: 'toolMarker',
   pen: 'toolPen', ballpoint: 'toolBall', calligraphy: 'toolCallig',
   brush: 'toolBrush', flat: 'toolFlat', watercolor: 'toolWater', smudge: 'toolSmudge',
   airbrush: 'toolSpray', splatter: 'toolSplatter',
-  eraser: 'toolEraser', eraserSoft: 'toolEraserSoft', eraserPixel: 'toolPixel',
+  eraser: 'toolEraser', eraserSoft: 'toolEraserSoft',
   bucket: 'toolBucket', eyedropper: 'dropper', line: 'line', shapes: 'toolShapes',
   symmetry: 'symmetry', 'ruler-tool': 'ruler', 'pencil-sim': 'toolPencilVirtual', 'more-tools': 'more',
 };
 
 // Herramientas por categoría (orden de la barra del editor).
 let toolbarOff = null; // listener de sincronía de categoría activa
+// Set esencial: una herramienta por PROPÓSITO, sin duplicados.
+// Fuera: "tiza" (hacía lo mismo que el carboncillo), "pixel" y "borrador
+// píxel" (nicho y redundantes con el cuadrado duro). Marcadores y plumas se
+// unen en "Tinta", que es como se piensan de verdad.
 const TOOL_CATS = [
-  ['pencil', 'Lápices', ['pencil', 'charcoal', 'chalk', 'crayon']],
-  ['marker', 'Marcadores', ['marker', 'pixel']],
-  ['pen', 'Plumas', ['pen', 'ballpoint', 'calligraphy']],
+  ['pencil', 'Lápices', ['pencil', 'charcoal', 'crayon']],
+  ['pen', 'Tinta', ['pen', 'ballpoint', 'marker', 'calligraphy']],
   ['brush', 'Pinceles', ['brush', 'flat', 'watercolor', 'smudge']],
-  ['spray', 'Aerógrafos', ['airbrush', 'splatter']],
-  ['erase', 'Borradores', ['eraser', 'eraserSoft', 'eraserPixel']],
-  ['other', 'Otras', ['bucket', 'eyedropper', 'line', 'shapes', 'symmetry', 'ruler-tool', 'pencil-sim', 'more-tools']],
+  ['spray', 'Aerógrafo', ['airbrush', 'splatter']],
+  ['erase', 'Borrador', ['eraser', 'eraserSoft']],
+  ['other', 'Formas', ['bucket', 'eyedropper', 'line', 'shapes', 'symmetry', 'ruler-tool', 'pencil-sim', 'more-tools']],
 ];
 let activeCat = 'pencil';
 

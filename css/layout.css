@@ -45,13 +45,22 @@ body[data-fullscreen="1"] .tabbar { transform: translateY(140%); }
 body[data-fullscreen="1"] .view-root { padding-bottom: 0; }
 
 /* ---------- Header ---------- */
+/* Una sola cabecera para toda la app: título grande, subtítulo tranquilo y
+   botones fantasma. Misma jerarquía visual en Inicio, Inbox, Chat, Nosotros
+   y Ajustes. */
 .app-header {
-  display: flex; align-items: center; gap: var(--s-3);
-  padding: var(--s-4) var(--s-4) var(--s-2);
+  display: flex; align-items: flex-start; gap: var(--s-3);
+  padding: calc(var(--safe-t) + var(--s-3)) var(--s-4) var(--s-3);
 }
-.app-header h1 { font-family: var(--font-round); font-size: 1.5rem; font-weight: 700; }
-.app-header .sub { color: var(--text-2); font-size: 0.85rem; }
-.header-actions { margin-left: auto; display: flex; gap: var(--s-2); }
+.app-header h1 {
+  font-family: var(--font-round); font-size: 1.9rem; font-weight: 800;
+  letter-spacing: -0.4px; line-height: 1.12;
+}
+.app-header .sub { color: var(--text-2); font-size: 0.86rem; margin-top: 3px; }
+.header-actions { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+/* Los botones de cabecera no compiten con el título. */
+.app-header .icon-btn { background: transparent; border-color: transparent; box-shadow: none; }
+.app-header .icon-btn:active { background: var(--surface-3); }
 
 /* ---------- Tab bar ---------- */
 .tabbar {

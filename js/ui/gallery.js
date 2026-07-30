@@ -20,31 +20,52 @@ export async function renderGallery(ctx) {
   const view = el('div', { class: 'view view-pad inbox-view' });
   root.append(view);
 
-  const header = el('div', { class: 'app-header', style: { padding: '10px 4px 4px' } }, [
-    el('button', { class: 'icon-btn', html: icon('back'), onclick: () => go('home') }),
-    el('div', {}, [el('h1', { text: 'Inbox' }), el('div', { class: 'sub', text: 'Sus dibujos, juntos' })]),
-    el('div', { class: 'header-actions' }, [
-      el('button', { class: 'icon-btn', html: icon('chat'), onclick: () => go('chat') }),
-      el('button', { class: 'icon-btn', html: icon('heart'), onclick: () => go('us') }),
-      el('button', { class: 'icon-btn', html: icon('add'), onclick: () => go('studio-new') }),
+  // Cabecera fija con desenfoque; el título grande se encoge al desplazar.
+  const header = el('header', { class: 'ibx-head' }, [
+    el('div', { class: 'ibx-bar' }, [
+      el('button', { class: 'icon-btn ghost', html: icon('back'), 'aria-label': 'Volver', onclick: () => go('home') }),
+      el('div', { class: 'ibx-bar-title', text: 'Inbox' }),
+      el('div', { class: 'ibx-acts' }, [
+        el('button', { class: 'icon-btn ghost', html: icon('chat'), 'aria-label': 'Chat', onclick: () => go('chat') }),
+        el('button', { class: 'icon-btn ghost', html: icon('heart'), 'aria-label': 'Nuestro espacio', onclick: () => go('us') }),
+      ]),
+    ]),
+    el('div', { class: 'ibx-hero' }, [
+      el('h1', { class: 'ibx-title', text: 'Inbox' }),
+      el('p', { class: 'ibx-sub', text: 'Todo lo que se han dibujado' }),
     ]),
   ]);
   view.append(header);
 
-  // Filtros + carpetas.
+  // Filtros — riel de píldoras sobre una pista hundida (se siente nativo).
   let filter = ctx.params.filter || 'all';
   let activeFolder = null;
-  const filterBar = el('div', { class: 'scroll-x', style: { marginTop: '6px' } });
+  const filterBar = el('nav', { class: 'seg', 'aria-label': 'Filtros' });
   const filters = [['all', t('gallery.all')], ['received', t('gallery.received')], ['mine', t('gallery.mine')], ['drafts', 'Borradores'], ['favorites', t('gallery.favorites')], ['secret', 'Secretos']];
-  filters.forEach(([id, label]) => filterBar.append(el('button', { class: 'chip' + (id === filter ? ' active' : ''), text: label, dataset: { f: id }, onclick: () => { filter = id; activeFolder = null; syncChips(); renderFeed(); } })));
+  filters.forEach(([id, label]) => filterBar.append(el('button', {
+    class: 'seg-item' + (id === filter ? ' on' : ''), text: label, dataset: { f: id },
+    'aria-pressed': id === filter ? 'true' : 'false',
+    onclick: (e) => { filter = id; activeFolder = null; syncChips(); renderFeed(); e.currentTarget.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); },
+  })));
   view.append(filterBar);
-  // El chip de borradores muestra cuántos hay pendientes.
   db.all('drawings').then((all) => {
     const n = all.filter((d) => d.draft && !d.sent).length;
     const chip = filterBar.querySelector('[data-f="drafts"]');
-    if (chip && n) chip.textContent = `Borradores · ${n}`;
+    if (chip && n) chip.append(el('i', { class: 'seg-count', text: String(n) }));
   });
-  function syncChips() { filterBar.querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', c.dataset.f === filter)); }
+  function syncChips() {
+    filterBar.querySelectorAll('.seg-item').forEach((c) => {
+      const on = c.dataset.f === filter;
+      c.classList.toggle('on', on); c.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  // Sombra + título compacto al desplazar (sin saltos: solo clase).
+  const onScroll = () => {
+    const y = view.scrollTop || document.documentElement.scrollTop || 0;
+    header.classList.toggle('stuck', y > 18);
+  };
+  view.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('scroll', onScroll, { passive: true });
 
   // Vista previa dinámica: los recuerdos cobran vida — miniaturas que van
   // cambiando solas, en orden aleatorio, con fundidos suaves y paneo lento.
@@ -54,15 +75,26 @@ export async function renderGallery(ctx) {
   view.append(liveWrap, foldersWrap, feedWrap);
 
   let liveTimer = null;
+  let introDone = false;
   await renderLive();
   await renderFolders();
   await renderFeed();
 
+  // Botón flotante: crear siempre a un pulgar de distancia.
+  const fab = el('button', { class: 'ibx-fab', html: icon('add') + '<span>Dibujar</span>', 'aria-label': 'Nuevo dibujo', onclick: () => go('studio-new') });
+  view.append(fab);
+
   const offs = [
-    bus.on('gallery:refresh', () => { renderLive(); renderFolders(); renderFeed(); }),
+    // Refrescar NO reconstruye el carrusel ni las carpetas: antes se rehacía
+    // todo el DOM en cada cambio y se veía como un parpadeo general.
+    bus.on('gallery:refresh', () => { renderFolders(); renderFeed(); }),
     bus.on('shared:list', () => renderFeed()),
   ];
-  return { leave: () => { clearInterval(liveTimer); offs.forEach((o) => o()); } };
+  return { leave: () => {
+    clearInterval(liveTimer);
+    window.removeEventListener('scroll', onScroll);
+    offs.forEach((o) => o());
+  } };
 
   // ---------- Recuerdos vivos ----------
   async function renderLive() {
@@ -97,7 +129,10 @@ export async function renderGallery(ctx) {
       caption.querySelector('.ml-sub').textContent = `${who} · ${fmtDate(d.updatedAt || d.createdAt, getLang())}`;
     };
     show(pickNext());
-    liveTimer = setInterval(() => { if (!document.hidden) show(pickNext()); }, 2600);
+    // Ritmo calmado (antes 2.6 s: se percibía como parpadeo constante) y
+    // respeta "reducir movimiento" del sistema.
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!calm) liveTimer = setInterval(() => { if (!document.hidden) show(pickNext()); }, 6000);
     panel.onclick = () => { if (current) openDrawing(current); };
   }
 
@@ -105,14 +140,12 @@ export async function renderGallery(ctx) {
   async function renderFolders() {
     const folders = await db.all('folders');
     foldersWrap.innerHTML = '';
+    // Sin carpetas la sección entera desaparece: se crea desde el menú de la
+    // tarjeta ("Mover a carpeta"). Menos ruido en pantalla.
+    if (!folders.length) return;
     const title = el('div', { class: 'section-title', text: t('gallery.folders') });
     title.append(el('button', { class: 'more', text: '+ ' + t('gallery.newFolder'), onclick: newFolder }));
     foldersWrap.append(title);
-    // Sin carpetas no tiene sentido mostrar una fila con un solo chip suelto.
-    if (!folders.length) {
-      foldersWrap.append(el('p', { class: 'hint-line', text: 'Crea carpetas para ordenar sus dibujos.' }));
-      return;
-    }
     const scroll = el('div', { class: 'scroll-x' });
     // "Todas" (no "Todos"): evita duplicar el chip del filtro de arriba.
     scroll.append(el('button', { class: 'chip' + (activeFolder === null ? ' active' : ''), text: 'Todas', onclick: () => { activeFolder = null; syncFolderChips(); renderFeed(); } }));
@@ -152,19 +185,35 @@ export async function renderGallery(ctx) {
 
     feedWrap.innerHTML = '';
     if (!drawings.length) {
-      feedWrap.append(el('div', { class: 'empty' }, [
-        el('div', { class: 'empty-icon', html: icon('image') }),
-        el('div', { style: { fontWeight: 700 }, text: t('gallery.empty') }),
-        el('div', { text: t('gallery.emptySub') }),
-        el('button', { class: 'btn btn-primary', style: { marginTop: '8px' }, html: icon('add') + ' ' + t('gallery.newDrawing'), onclick: () => go('studio-new') }),
+      // Vacío con contexto: cada filtro explica qué falta y qué hacer.
+      const EMPTY = {
+        all: ['image', t('gallery.empty'), t('gallery.emptySub')],
+        received: ['inbox', 'Nada recibido todavía', 'Cuando tu pareja te envíe un dibujo, aparecerá aquí.'],
+        mine: ['pen', 'Aún no has dibujado', 'Tu primer trazo empieza aquí.'],
+        drafts: ['paper', 'Sin borradores', 'Lo que dejes a medias se guardará aquí.'],
+        favorites: ['heart', 'Sin favoritos', 'Toca el corazón de un dibujo para guardarlo aquí.'],
+        secret: ['secret', 'Sin secretos', 'Envía un dibujo en secreto para sorprenderla.'],
+      };
+      const [ic, title, sub] = EMPTY[filter] || EMPTY.all;
+      feedWrap.append(el('div', { class: 'ibx-empty' }, [
+        el('div', { class: 'ibx-empty-ic', html: icon(ic) }),
+        el('div', { class: 'ibx-empty-t', text: title }),
+        el('div', { class: 'ibx-empty-s', text: sub }),
+        el('button', { class: 'btn btn-primary', style: { marginTop: '14px' }, html: icon('add') + ' ' + t('gallery.newDrawing'), onclick: () => go('studio-new') }),
       ]));
+      view.classList.add('is-empty');   // oculta el FAB: la llamada ya está aquí
       return;
     }
+    // La entrada escalonada solo la primera vez: al refrescar (favorito,
+    // sincronización…) las tarjetas ya no vuelven a animarse — eso se veía
+    // como un parpadeo de toda la lista.
+    view.classList.remove('is-empty');
     drawings.forEach((d, i) => {
       const card = feedCard(d);
-      card.style.animationDelay = Math.min(i * 60, 360) + 'ms';
+      if (!introDone) { card.classList.add('enter'); card.style.animationDelay = Math.min(i * 55, 330) + 'ms'; }
       feedWrap.append(card);
     });
+    introDone = true;
   }
 
   function feedCard(d) {
@@ -176,15 +225,21 @@ export async function renderGallery(ctx) {
     const hidden = d.secret && !revealedSet.has(d.id);
     const card = el('article', { class: 'inbox-card ' + (isPartner ? 'from-her' : 'from-me') });
 
-    // Autor + fecha.
-    card.append(el('div', { class: 'ic-head' }, [
-      el('span', { class: 'ic-author' }, [el('i', { class: 'ic-dot' }), who]),
-      el('span', { class: 'ic-date', text: `${fmtDate(d.updatedAt || d.createdAt, getLang())} · ${fmtTime(d.updatedAt || d.createdAt)}` }),
-    ]));
-
-    // Imagen (o velo de secreto).
+    // Imagen protagonista, con velo degradado y los datos encima.
     const media = el('div', { class: 'ic-media' });
-    if (d.thumb) media.append(el('img', { src: d.thumb, alt: d.title || '' }));
+    if (d.thumb) media.append(el('img', { src: d.thumb, alt: d.title || '', loading: 'lazy', decoding: 'async' }));
+    else media.append(el('div', { class: 'ic-noimg', html: icon('image') }));
+    media.append(el('div', { class: 'ic-scrim' }));
+    media.append(el('div', { class: 'ic-over' }, [
+      el('span', { class: 'ic-author' }, [el('i', { class: 'ic-dot' }), who]),
+      el('h3', { class: 'ic-title', text: d.title || t('studio.untitled') }),
+    ]));
+    // Distintivos: interactivo, secreto, borrador.
+    const badges = el('div', { class: 'ic-badges' });
+    if ((d.doc?.media || []).some((m) => m.tap)) badges.append(el('span', { class: 'ic-badge accent', html: icon('zap'), title: 'Interactivo' }));
+    if (d.draft && !d.sent) badges.append(el('span', { class: 'ic-badge', text: 'Borrador' }));
+    if (d.secret) badges.append(el('span', { class: 'ic-badge', html: icon('secret'), title: 'Secreto' }));
+    if (badges.childNodes.length) media.append(badges);
     if (hidden) {
       media.append(el('button', { class: 'ic-secret' }, [
         el('span', { class: 'ic-secret-icon', html: icon('secret') }),
@@ -194,17 +249,17 @@ export async function renderGallery(ctx) {
     }
     card.append(media);
 
-    // Pie: título + acciones.
+    // Pie: fecha + acciones (objetivos táctiles amplios).
     const rx = Object.entries(d.reactions || {}).filter(([, n]) => n > 0).map(([e, n]) => `${e} ${n}`).join('  ');
     const foot = el('div', { class: 'ic-foot' }, [
       el('div', { class: 'ic-info' }, [
-        el('div', { class: 'ic-title', text: d.title || t('studio.untitled') }),
+        el('div', { class: 'ic-date', text: timeAgo(d.updatedAt || d.createdAt, t) }),
         rx ? el('div', { class: 'ic-rx', text: rx }) : null,
       ]),
       el('div', { class: 'ic-actions' }, [
         d.recording?.ops?.length ? el('button', { class: 'ic-act', html: icon('play'), 'aria-label': 'Ver proceso', onclick: (e) => { e.stopPropagation(); openPlayer({ doc: d.doc, recording: d.recording, title: d.title }); } }) : null,
         el('button', { class: 'ic-act' + (d.favorite ? ' fav' : ''), html: icon('heart'), 'aria-label': 'Favorito', onclick: async (e) => { e.stopPropagation(); d.favorite = !d.favorite; e.currentTarget.classList.toggle('fav', d.favorite); if (!d.remote) await db.put('drawings', d); else fb.patchSharedDrawing?.(d.id, { favorite: d.favorite }); } }),
-        el('button', { class: 'ic-act', html: icon('more'), 'aria-label': 'Más', onclick: (e) => { e.stopPropagation(); cardMenu(d); } }),
+        el('button', { class: 'ic-act', html: icon('more'), 'aria-label': 'Más opciones', onclick: (e) => { e.stopPropagation(); cardMenu(d); } }),
       ]),
     ]);
     card.append(foot);

@@ -419,9 +419,10 @@ body[data-route^="studio"] .vinyl-mini {
 .ach-rar { display: inline-block; margin-top: 6px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--rar); }
 .ach-reward { font-size: 0.68rem; margin-top: 4px; color: var(--text-2); }
 .ach-pop {
-  /* Abajo: antes salía arriba y tapaba el título y los botones de la cabecera. */
-  position: fixed; bottom: calc(150px + var(--safe-b)); left: 50%; transform: translateX(-50%);
-  max-width: min(92vw, 400px); pointer-events: none;
+  /* Banner superior compacto, como una notificación del sistema: no se cruza
+     con el contenido de la lista ni con el botón flotante. */
+  position: fixed; top: calc(var(--safe-t) + 62px); left: 50%; transform: translateX(-50%);
+  max-width: min(92vw, 420px); pointer-events: none;
   /* Por debajo de hojas (900) y diálogos (1000): nunca tapa lo que estás usando. */
   z-index: 850; display: flex; align-items: center; gap: 12px;
   background: var(--glass); backdrop-filter: blur(22px);
@@ -429,8 +430,8 @@ body[data-route^="studio"] .vinyl-mini {
   box-shadow: 0 10px 34px var(--glow); padding: 12px 18px;
   animation: achIn 0.5s var(--ease-soft);
 }
-.ach-pop.out { opacity: 0; transform: translateX(-50%) translateY(16px); transition: all var(--dur-3) var(--ease); }
-@keyframes achIn { from { opacity: 0; transform: translateX(-50%) translateY(24px) scale(0.9); } }
+.ach-pop.out { opacity: 0; transform: translateX(-50%) translateY(-16px); transition: all var(--dur-3) var(--ease); }
+@keyframes achIn { from { opacity: 0; transform: translateX(-50%) translateY(-24px) scale(0.94); } }
 .ach-pop-ic { display: grid; place-items: center; flex: none; animation: heartbeat 1s var(--ease-soft) 2; }
 .ach-pop-ic svg { width: 30px; height: 30px; color: var(--rar); }
 .ach-pop-title { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--rar); }
@@ -443,49 +444,60 @@ body[data-route^="studio"] .vinyl-mini {
 /* ============================================================
    v3 — Inbox (feed vertical con identidad rosa/verde)
    ============================================================ */
-.inbox-feed { display: flex; flex-direction: column; gap: 20px; margin-top: 12px; padding-bottom: 8px; }
-.inbox-card {
-  background: var(--surface); border-radius: 26px; overflow: hidden;
-  border: 1px solid var(--line);
-  box-shadow: 0 3px 8px rgba(120,90,110,0.05), 0 16px 40px rgba(120,90,110,0.1);
-  animation: cardRise 0.6s var(--ease-soft) backwards;
-  transition: transform var(--dur-2) var(--ease-soft);
-}
-body[data-theme="dark"] .inbox-card { box-shadow: 0 3px 8px rgba(0,0,0,0.25), 0 16px 40px rgba(0,0,0,0.35); }
-.inbox-card:active { transform: scale(0.98); }
-@keyframes cardRise { from { opacity: 0; transform: translateY(26px) scale(0.97); } }
-.ic-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 10px; }
-.ic-author { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.85rem; }
-.ic-dot { width: 10px; height: 10px; border-radius: 50%; }
-.from-her .ic-author { color: var(--her-ink); }
-.from-her .ic-dot { background: var(--her); box-shadow: 0 0 0 3px var(--her-soft); }
-.from-me .ic-author { color: var(--mine-ink); }
-.from-me .ic-dot { background: var(--mine); box-shadow: 0 0 0 3px var(--mine-soft); }
-.ic-date { color: var(--text-3); font-size: 0.72rem; font-weight: 600; }
-.ic-media { position: relative; aspect-ratio: 4/3.4; background: var(--surface-3); overflow: hidden; }
-.from-her .ic-media { background: var(--her-soft); }
-.from-me .ic-media { background: var(--mine-soft); }
-.ic-media img { width: 100%; height: 100%; object-fit: cover; }
-.ic-foot { display: flex; align-items: center; gap: 10px; padding: 12px 14px 14px; }
-.from-her .ic-foot { box-shadow: inset 0 3px 0 -1.5px var(--her-soft); }
-.from-me .ic-foot { box-shadow: inset 0 3px 0 -1.5px var(--mine-soft); }
-.ic-info { flex: 1; min-width: 0; }
-.ic-title { font-weight: 800; font-size: 0.98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ic-rx { font-size: 0.78rem; margin-top: 2px; color: var(--text-2); }
-.ic-actions { display: flex; gap: 6px; }
-.ic-act {
-  width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center;
-  background: var(--surface-2); border: 1px solid var(--line);
-  transition: transform var(--dur-1) var(--ease), background var(--dur-2) var(--ease);
-}
-.ic-act svg { width: 19px; height: 19px; fill: var(--text-2); }
-.ic-act:active { transform: scale(0.86); }
-.ic-act.fav { background: var(--her-soft); border-color: transparent; }
-.ic-act.fav svg { fill: var(--her); }
-.empty-icon { width: 64px; height: 64px; border-radius: 22px; background: var(--surface-3); display: grid; place-items: center; }
-.empty-icon svg { width: 30px; height: 30px; fill: var(--text-3); }
+.inbox-feed { display: flex; flex-direction: column; gap: var(--s-5); margin-top: var(--s-4); padding-bottom: 96px; }
 
-/* Velo de dibujo secreto */
+/* ---- Tarjeta del Inbox: la imagen manda, los datos van encima ---- */
+.inbox-card {
+  position: relative; border-radius: var(--r-lg); overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(70,45,60,.05), 0 12px 30px -12px rgba(70,45,60,.22);
+  transition: transform var(--dur-2) var(--ease-soft), box-shadow var(--dur-2) var(--ease);
+  contain: content;                       /* aísla el pintado → menos trabajo */
+}
+.inbox-card.enter { animation: cardIn var(--dur-3) var(--ease-soft) both; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(14px); } }
+.inbox-card:active { transform: scale(0.985); box-shadow: 0 1px 2px rgba(70,45,60,.05), 0 6px 16px -8px rgba(70,45,60,.22); }
+body[data-theme="dark"] .inbox-card { box-shadow: 0 2px 6px rgba(0,0,0,.3), 0 16px 36px -14px rgba(0,0,0,.5); }
+
+.ic-media { position: relative; aspect-ratio: 4 / 3.2; background: var(--surface-3); overflow: hidden; }
+.ic-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ic-noimg { width: 100%; height: 100%; display: grid; place-items: center; }
+.ic-noimg svg { width: 40px; height: 40px; stroke: var(--text-3); fill: none; }
+/* Velo para que el texto siempre se lea sobre cualquier dibujo. */
+.ic-scrim { position: absolute; inset: auto 0 0 0; height: 62%; background: linear-gradient(transparent, rgba(28,18,26,.72)); pointer-events: none; }
+.ic-over { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px; pointer-events: none; }
+.ic-author { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 0.76rem; color: rgba(255,255,255,.92); text-shadow: 0 1px 6px rgba(0,0,0,.4); }
+.ic-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.from-her .ic-dot { background: var(--her); box-shadow: 0 0 0 3px rgba(232,137,158,.32); }
+.from-me .ic-dot { background: var(--mine); box-shadow: 0 0 0 3px rgba(143,188,164,.32); }
+.ic-title {
+  margin-top: 3px; font-family: var(--font-round); font-weight: 800; font-size: 1.08rem; line-height: 1.25;
+  color: #fff; text-shadow: 0 1px 10px rgba(0,0,0,.45);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+/* Distintivos arriba a la derecha */
+.ic-badges { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
+.ic-badge {
+  display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px;
+  border-radius: var(--r-pill); background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
+  font-size: 0.68rem; font-weight: 800; color: var(--text-2); box-shadow: var(--shadow-sm);
+}
+.ic-badge svg { width: 14px; height: 14px; stroke: currentColor; fill: none; }
+.ic-badge.accent { background: var(--accent, #a68fd0); color: #fff; }
+
+.ic-foot { display: flex; align-items: center; gap: var(--s-3); padding: 11px 12px 11px 16px; }
+.ic-info { flex: 1; min-width: 0; }
+.ic-date { color: var(--text-3); font-size: 0.76rem; font-weight: 600; }
+.ic-rx { font-size: 0.78rem; margin-top: 2px; color: var(--text-2); }
+.ic-actions { display: flex; gap: 4px; }
+.ic-act {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: transparent; border: none; transition: background var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+}
+.ic-act svg { width: 20px; height: 20px; fill: var(--text-2); }
+.ic-act:active { transform: scale(0.88); background: var(--surface-3); }
+.ic-act.fav svg { fill: var(--her); }
+
 .ic-secret, .msg-secret {
   position: absolute; inset: 0; z-index: 2;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
@@ -820,3 +832,85 @@ body[data-theme="dark"] .us-hero { background: linear-gradient(150deg, #45303a, 
   pointer-events: none; transition: opacity var(--dur-3) var(--ease);
 }
 .hot-hint.out { opacity: 0; }
+
+/* ============================================================
+   v11 — Inbox premium: cabecera fija, filtros, vacíos y FAB
+   ============================================================ */
+.inbox-view { position: relative; }
+/* Cabecera pegada con desenfoque; el título grande se pliega al desplazar. */
+.ibx-head {
+  position: sticky; top: 0; z-index: 30; margin: 0 calc(var(--s-4) * -1);
+  padding: calc(var(--safe-t) + 6px) var(--s-4) 0;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(18px) saturate(1.15);
+  transition: box-shadow var(--dur-3) var(--ease), background var(--dur-3) var(--ease);
+}
+.ibx-head.stuck { box-shadow: 0 1px 0 var(--line), 0 10px 24px -18px rgba(60,40,55,.5); }
+.ibx-bar { display: flex; align-items: center; gap: var(--s-2); min-height: 52px; }
+.ibx-bar-title {
+  flex: 1; text-align: center; font-family: var(--font-round); font-weight: 800; font-size: 1.02rem;
+  opacity: 0; transform: translateY(6px); transition: opacity var(--dur-3) var(--ease), transform var(--dur-3) var(--ease);
+}
+.ibx-head.stuck .ibx-bar-title { opacity: 1; transform: none; }
+.ibx-acts { display: flex; gap: 6px; }
+.icon-btn.ghost { background: transparent; border-color: transparent; box-shadow: none; }
+.icon-btn.ghost:active { background: var(--surface-3); }
+.ibx-hero { padding: 2px 2px 10px; transition: opacity var(--dur-3) var(--ease), max-height var(--dur-3) var(--ease); overflow: hidden; max-height: 96px; }
+.ibx-head.stuck .ibx-hero { opacity: 0; max-height: 0; padding-bottom: 0; }
+.ibx-title { font-family: var(--font-round); font-weight: 800; font-size: 2rem; letter-spacing: -0.5px; line-height: 1.1; }
+.ibx-sub { color: var(--text-2); font-size: 0.88rem; margin-top: 3px; }
+
+/* Riel de filtros sobre pista hundida */
+.seg {
+  display: flex; gap: 4px; padding: 4px; margin: var(--s-3) 0 var(--s-2);
+  background: var(--surface-inset); border: 1px solid var(--line); border-radius: var(--r-pill);
+  overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity;
+}
+.seg::-webkit-scrollbar { display: none; }
+.seg-item {
+  display: inline-flex; align-items: center; gap: 6px; flex: none; scroll-snap-align: center;
+  min-height: 38px; padding: 0 16px; border-radius: var(--r-pill); border: none; background: transparent;
+  font-size: 0.85rem; font-weight: 700; color: var(--text-2); white-space: nowrap;
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+}
+.seg-item:active { transform: scale(0.95); }
+.seg-item.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(70,45,60,.08), 0 4px 12px -6px rgba(70,45,60,.3); }
+.seg-count {
+  min-width: 19px; height: 19px; padding: 0 5px; border-radius: var(--r-pill);
+  background: var(--primary); color: var(--primary-ink); font-size: 0.66rem; font-weight: 800;
+  display: inline-grid; place-items: center; font-style: normal;
+}
+
+/* Vacíos con contexto */
+.ibx-empty { text-align: center; padding: 48px 24px; display: grid; justify-items: center; gap: 4px; }
+.ibx-empty-ic {
+  width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface-inset); margin-bottom: 10px;
+}
+.ibx-empty-ic svg { width: 32px; height: 32px; stroke: var(--text-3); fill: none; }
+.ibx-empty-t { font-family: var(--font-round); font-weight: 800; font-size: 1.05rem; }
+.ibx-empty-s { color: var(--text-2); font-size: 0.86rem; max-width: 30ch; line-height: 1.45; }
+
+/* Botón flotante para crear */
+.ibx-fab {
+  position: fixed; right: var(--s-4); bottom: calc(var(--safe-b) + 20px); z-index: 40;
+  display: inline-flex; align-items: center; gap: 8px; height: 54px; padding: 0 22px 0 18px;
+  border: none; border-radius: var(--r-pill); color: var(--primary-ink);
+  background: linear-gradient(135deg, var(--rose), var(--rose-deep));
+  box-shadow: 0 8px 24px -6px rgba(232,137,158,.7), 0 2px 6px rgba(70,45,60,.16);
+  font-weight: 800; font-size: 0.95rem;
+  transition: transform var(--dur-2) var(--ease-soft), box-shadow var(--dur-2) var(--ease);
+}
+.ibx-fab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2.4; }
+.ibx-fab:active { transform: scale(0.94); box-shadow: 0 4px 14px -6px rgba(232,137,158,.7); }
+
+/* Respeta la preferencia del sistema: nada de movimiento innecesario. */
+@media (prefers-reduced-motion: reduce) {
+  .inbox-card.enter, .memories-live img { animation: none !important; }
+  * { scroll-behavior: auto !important; }
+}
+/* El FAB se retira cuando el vacío ya ofrece la acción principal. */
+.inbox-view.is-empty .ibx-fab { opacity: 0; transform: translateY(12px) scale(.9); pointer-events: none; }
+.ibx-fab { transition: transform var(--dur-3) var(--ease-soft), opacity var(--dur-3) var(--ease), box-shadow var(--dur-2) var(--ease); }
+/* Insinúa que el riel de filtros se desliza. */
+.seg { -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent 100%); mask-image: linear-gradient(90deg, #000 88%, transparent 100%); }
