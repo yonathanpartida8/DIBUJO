@@ -5,6 +5,43 @@ distancia y en tiempo real. Interfaz premium en **español latino**, pastel
 refinado (no infantil), iconografía SVG profesional (sin emojis en la UI),
 inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
 
+## Novedades v11 (rediseño de interfaz y rendimiento)
+
+**Inbox rediseñado por completo**
+- Cabecera fija con desenfoque: título grande que se pliega al desplazar y
+  deja una barra compacta, con sombra sutil solo cuando toca.
+- Filtros en riel de píldoras sobre pista hundida, con contador de borradores.
+- Tarjetas con la **imagen de protagonista**: velo degradado, autor con punto
+  de color, título encima, distintivos de *interactivo / borrador / secreto* y
+  pie con tiempo relativo y acciones cómodas.
+- Vacíos con contexto para cada filtro y botón flotante **Dibujar** que se
+  aparta cuando el vacío ya ofrece la acción.
+
+**Herramientas esenciales (sin duplicados)**
+- De **18 a 15 pinceles** y de **6 a 5 categorías**. Fuera *Tiza* (hacía lo
+  mismo que el carboncillo), *Pixel* y *Borrador píxel*. *Marcadores* y
+  *Plumas* se unen en **Tinta**.
+- Los dibujos antiguos con esas herramientas se reproducen con su equivalente
+  más cercano, no con la pluma.
+
+**Rendimiento**
+- **Carga perezosa por pantalla**: el arranque pasó de **45 recursos / 493 KB**
+  a **17 / 160 KB**, y el DOM interactivo de ~164 ms a ~102 ms. El motor de
+  dibujo ya no se compila para ver la pantalla de inicio.
+- Refrescar el Inbox ya no reconstruye el carrusel ni las carpetas.
+- La animación de entrada de las tarjetas ocurre solo la primera vez (antes
+  parpadeaba la lista entera al marcar un favorito o al sincronizar).
+- Carrusel de recuerdos de 2.6 s a 6 s y respeta *reducir movimiento*.
+- Imágenes del feed con carga diferida y `contain: content` en las tarjetas.
+
+**Coherencia y accesibilidad**
+- Una sola cabecera para toda la app (título grande + botones fantasma):
+  Inicio, Inbox, Chat, Nosotros y Ajustes comparten la misma jerarquía.
+- El aviso de logro pasa a banner superior: ya no cruza las tarjetas ni tapa
+  el título.
+- `aria-pressed` en los filtros, `aria-label` en las acciones y objetivos
+  táctiles de 38–44 px.
+
 ## Novedades v10 (interactivos, objetos y música)
 
 - **Dibujos interactivos**: marca cualquier objeto como interactivo y elige su

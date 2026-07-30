@@ -13,30 +13,36 @@ import { toast } from './core/ui.js';
 import { fb } from './core/firebase.js';
 import { initGlobalButtonAudio } from './core/sounds.js';
 
-// Vistas
-import { renderStudio } from './ui/studio.js';
-import { renderGallery } from './ui/gallery.js';
-import { renderChat } from './ui/chat.js';
-import { renderUs } from './ui/us.js';
-import { renderSettings } from './ui/settings.js';
-import { renderOnboarding } from './ui/onboarding.js';
-import { renderHome } from './ui/home.js';
-import { renderLogin, renderPairing } from './ui/login.js';
+// Vistas — carga PEREZOSA: cada pantalla (y todo lo que arrastra, como el
+// motor de dibujo) se descarga y compila la primera vez que se visita, no al
+// arrancar. El arranque deja de pagar el coste de la app entera.
+const lazy = (loader, name) => async (ctx) => (await loader())[name](ctx);
+const V = {
+  login: lazy(() => import('./ui/login.js'), 'renderLogin'),
+  pairing: lazy(() => import('./ui/login.js'), 'renderPairing'),
+  home: lazy(() => import('./ui/home.js'), 'renderHome'),
+  studio: lazy(() => import('./ui/studio.js'), 'renderStudio'),
+  gallery: lazy(() => import('./ui/gallery.js'), 'renderGallery'),
+  chat: lazy(() => import('./ui/chat.js'), 'renderChat'),
+  us: lazy(() => import('./ui/us.js'), 'renderUs'),
+  settings: lazy(() => import('./ui/settings.js'), 'renderSettings'),
+  onboarding: lazy(() => import('./ui/onboarding.js'), 'renderOnboarding'),
+};
 
 async function boot() {
   applyTheme();
   applyDOM();
 
-  register('login', renderLogin);
-  register('pairing', renderPairing);
-  register('home', renderHome);
-  register('studio', renderStudio);
-  register('studio-new', renderStudio);
-  register('gallery', renderGallery);
-  register('chat', renderChat);
-  register('us', renderUs);
-  register('settings', renderSettings);
-  register('onboarding', renderOnboarding);
+  register('login', V.login);
+  register('pairing', V.pairing);
+  register('home', V.home);
+  register('studio', V.studio);
+  register('studio-new', V.studio);
+  register('gallery', V.gallery);
+  register('chat', V.chat);
+  register('us', V.us);
+  register('settings', V.settings);
+  register('onboarding', V.onboarding);
 
   initTabbar();
   initGlobalButtonAudio();
