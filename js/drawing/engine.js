@@ -583,6 +583,7 @@ export class Engine {
       for (const m of this.media) {
         ctx.save(); ctx.globalAlpha = m.opacity ?? 1;
         ctx.translate(m.x + m.w / 2, m.y + m.h / 2); ctx.rotate((m.rot || 0) * Math.PI / 180);
+        if (m.flipH || m.flipV) ctx.scale(m.flipH ? -1 : 1, m.flipV ? -1 : 1); // volteo del objeto
         if (m.type === 'text' || m.type === 'emoji') {
           ctx.fillStyle = m.color || '#000';
           ctx.font = `${m.bold ? '800 ' : ''}${m.fontSize || 40}px ${m.font || 'Nunito, sans-serif'}`;

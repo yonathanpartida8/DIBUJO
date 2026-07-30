@@ -764,3 +764,59 @@ body[data-theme="dark"] .us-hero { background: linear-gradient(150deg, #45303a, 
 .sc-label { position: absolute; bottom: 22%; color: #fff; font-family: var(--font-round); font-weight: 800; font-size: 1.05rem; opacity: 0; }
 .send-cine.go .sc-label { animation: scLabel 1.9s var(--ease) forwards; }
 @keyframes scLabel { 0%,15% { opacity: 0; transform: translateY(8px); } 30% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ============================================================
+   v10 — Dibujos interactivos (visor)
+   ============================================================ */
+.viewer-wrap {
+  position: relative; max-width: 100%; max-height: 100%;
+  will-change: transform; transform-origin: center; transition: transform 0.06s linear;
+}
+.viewer-wrap .viewer-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.viewer-hot { position: absolute; inset: 0; pointer-events: none; }
+/* Zona tocable sobre cada objeto interactivo: brilla suavemente para invitar. */
+.hot-spot {
+  position: absolute; pointer-events: auto; background: transparent;
+  border: 0; border-radius: 12px; padding: 0;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.55), 0 0 26px 6px rgba(255,214,232,.5);
+  animation: hotGlow 2.1s var(--ease-soft) infinite;
+}
+@keyframes hotGlow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255,255,255,.35), 0 0 18px 3px rgba(255,214,232,.35); }
+  50%      { box-shadow: 0 0 0 2px rgba(255,255,255,.75), 0 0 30px 9px rgba(255,214,232,.65); }
+}
+.hot-spot:active { transform: scale(0.96); }
+.fx-beat { animation: heartbeat 0.85s var(--ease-soft); }
+.fx-spin { animation: hotSpin 0.85s var(--ease-soft); }
+.fx-grow { animation: hotGrow 0.85s var(--ease-soft); }
+@keyframes hotSpin { to { transform: rotate(360deg); } }
+@keyframes hotGrow { 50% { transform: scale(1.35); } }
+/* Mensaje escondido revelado al tocar */
+.hot-msg {
+  position: absolute; transform: translate(-6%, -130%) scale(0.9); opacity: 0;
+  background: var(--surface); color: var(--text); font-weight: 800; font-size: 0.95rem;
+  padding: 10px 16px; border-radius: var(--r-pill); box-shadow: var(--shadow-lg);
+  pointer-events: none; white-space: nowrap; max-width: 80vw; overflow: hidden; text-overflow: ellipsis;
+  transition: opacity var(--dur-2) var(--ease), transform var(--dur-2) var(--ease-soft);
+}
+.hot-msg.in { opacity: 1; transform: translate(-6%, -145%) scale(1); }
+/* Corazones que suben al tocar */
+.hot-heart {
+  position: absolute; width: 14px; height: 14px; pointer-events: none;
+  background: var(--rose-deep, #e06e86);
+  clip-path: path('M7 13C7 13 0.6 8.6 0.6 4.6C0.6 2.4 2.3 1 4.2 1C5.4 1 6.5 1.6 7 2.6C7.5 1.6 8.6 1 9.8 1C11.7 1 13.4 2.4 13.4 4.6C13.4 8.6 7 13 7 13Z');
+  animation: hotHeart 1.6s var(--ease-soft) forwards;
+}
+@keyframes hotHeart {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), -120px) scale(1.15); }
+}
+/* Pista inicial */
+.hot-hint {
+  position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+  background: rgba(255,255,255,.92); color: var(--text); font-weight: 700; font-size: 0.78rem;
+  padding: 8px 14px; border-radius: var(--r-pill); box-shadow: var(--shadow-md);
+  pointer-events: none; transition: opacity var(--dur-3) var(--ease);
+}
+.hot-hint.out { opacity: 0; }

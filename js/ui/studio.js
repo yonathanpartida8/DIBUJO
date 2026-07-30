@@ -790,16 +790,25 @@ function renderMediaOverlay(media) {
   const layer = engine.mediaLayer; if (!layer) return;
   layer.innerHTML = '';
   media.forEach((m) => {
-    const obj = el('div', { class: 'media-obj' + (m.id === selectedMediaId ? ' selected' : '') + (m.anim ? ' anim-' + m.anim : ''), style: { left: m.x + 'px', top: m.y + 'px', width: m.w + 'px', height: m.h + 'px', transform: `rotate(${m.rot || 0}deg)`, opacity: m.opacity ?? 1, filter: m.shadow ? 'drop-shadow(0 10px 18px rgba(60,40,60,0.35))' : '' } });
+    const flip = `scale(${m.flipH ? -1 : 1}, ${m.flipV ? -1 : 1})`;
+    const obj = el('div', {
+      class: 'media-obj' + (m.id === selectedMediaId ? ' selected' : '') + (m.anim ? ' anim-' + m.anim : '') + (m.locked ? ' locked' : '') + (m.tap ? ' interactive' : ''),
+      style: { left: m.x + 'px', top: m.y + 'px', width: m.w + 'px', height: m.h + 'px', transform: `rotate(${m.rot || 0}deg) ${flip}`, opacity: m.opacity ?? 1, filter: m.shadow ? 'drop-shadow(0 10px 18px rgba(60,40,60,0.35))' : '' },
+    });
     if (m.type === 'text') obj.append(el('div', { class: 'txt', style: { fontSize: (m.fontSize || 40) + 'px', color: m.color || 'inherit', fontFamily: m.font || 'Nunito, sans-serif', fontWeight: m.bold ? 800 : 400, textAlign: m.align || 'center', letterSpacing: (m.spacing || 0) + 'px', whiteSpace: 'pre-wrap' }, text: m.text }));
     else obj.append(el('img', { src: m.paused && m._still ? m._still : (m._img ? m._img.src : m.src) }));
     if (m.id === selectedMediaId) {
-      obj.append(
-        el('div', { class: 'rot-stem' }),
-        el('div', { class: 'handle del', html: icon('close'), title: 'Eliminar', onpointerdown: (e) => { e.stopPropagation(); engine.removeMedia(m.id); selectedMediaId = null; } }),
-        el('div', { class: 'handle br', html: icon('transform'), title: 'Cambiar tamaño', onpointerdown: (e) => startResize(e, m) }),
-        el('div', { class: 'handle rot', html: icon('rotate'), title: 'Rotar', onpointerdown: (e) => startRotate(e, m) }),
-      );
+      if (m.locked) {
+        // Bloqueado: sin asas, solo el candado para desbloquear.
+        obj.append(el('div', { class: 'handle lock', html: icon('lock'), title: 'Desbloquear', onpointerdown: (e) => { e.stopPropagation(); m.locked = false; engine.markDirty(); renderMediaOverlay(engine.media); } }));
+      } else {
+        obj.append(
+          el('div', { class: 'rot-stem' }),
+          el('div', { class: 'handle del', html: icon('close'), title: 'Eliminar', onpointerdown: (e) => { e.stopPropagation(); engine.removeMedia(m.id); selectedMediaId = null; } }),
+          el('div', { class: 'handle br', html: icon('transform'), title: 'Cambiar tamaño', onpointerdown: (e) => startResize(e, m) }),
+          el('div', { class: 'handle rot', html: icon('rotate'), title: 'Rotar', onpointerdown: (e) => startRotate(e, m) }),
+        );
+      }
       layer.append(objContextBar(m));
     }
     // Arrastre + pellizco de dos dedos sobre el objeto.
@@ -822,20 +831,83 @@ function renderMediaOverlay(media) {
 }
 
 // Barra contextual flotante sobre el objeto seleccionado.
+// Barra compacta sobre el objeto: lo más usado a mano; el resto en "Más".
 function objContextBar(m) {
   const inv = 1 / (engine.baseScale * engine.zoom);
   const bar = el('div', { class: 'obj-bar', style: { left: (m.x + m.w / 2) + 'px', top: Math.max(8, m.y - 92 * inv) + 'px' } });
-  const btn = (ic, label, fn) => el('button', { class: 'ob-btn', html: icon(ic), title: label, 'aria-label': label, onclick: (e) => { e.stopPropagation(); fn(); } });
-  bar.append(
-    btn('dup', 'Duplicar', () => { const copy = { ...m, id: undefined, x: m.x + 30, y: m.y + 30 }; delete copy._img; delete copy._still; const nm = engine.addMedia(copy); if (m._img) nm._img = m._img; selectedMediaId = nm.id; renderMediaOverlay(engine.media); }),
-    btn('sparkle', 'Animar', () => objAnimSheet(m)),
-    btn('sun', 'Estilo', () => objStyleSheet(m)),
-  );
-  if (m.type === 'text') bar.append(btn('text', 'Editar texto', () => openTextEditor(m)));
-  if (m.type === 'gif') bar.append(btn(m.paused ? 'playFilled' : 'pauseFilled', m.paused ? 'Reproducir' : 'Pausar', () => toggleGifPause(m)));
-  bar.append(btn('trash', 'Eliminar', () => { engine.removeMedia(m.id); selectedMediaId = null; }));
+  const btn = (ic, label, fn, cls = '') => el('button', { class: 'ob-btn ' + cls, html: icon(ic), title: label, 'aria-label': label, onclick: (e) => { e.stopPropagation(); fn(); } });
+  if (m.locked) {
+    bar.append(btn('unlock', 'Desbloquear', () => { m.locked = false; engine.markDirty(); renderMediaOverlay(engine.media); }));
+  } else {
+    bar.append(
+      btn('dup', 'Duplicar', () => duplicateObj(m)),
+      btn('flipH', 'Voltear', () => { m.flipH = !m.flipH; engine.markDirty(); renderMediaOverlay(engine.media); }),
+      btn('sparkle', 'Animar', () => objAnimSheet(m)),
+    );
+    if (m.type === 'text') bar.append(btn('text', 'Editar texto', () => openTextEditor(m)));
+    if (m.type === 'gif') bar.append(btn(m.paused ? 'playFilled' : 'pauseFilled', m.paused ? 'Reproducir' : 'Pausar', () => toggleGifPause(m)));
+    bar.append(btn('more', 'Más opciones', () => objMoreSheet(m), 'ob-more'));
+    bar.append(btn('trash', 'Eliminar', () => { engine.removeMedia(m.id); selectedMediaId = null; }, 'ob-del'));
+  }
   bar.addEventListener('pointerdown', (e) => e.stopPropagation());
   return bar;
+}
+function duplicateObj(m) {
+  const copy = { ...m, id: undefined, x: m.x + 30, y: m.y + 30 };
+  delete copy._img; delete copy._still;
+  const nm = engine.addMedia(copy);
+  if (m._img) nm._img = m._img;
+  selectedMediaId = nm.id; renderMediaOverlay(engine.media);
+}
+// Reordena el objeto dentro de engine.media (el último se dibuja encima).
+function reorderObj(m, where) {
+  const arr = engine.media; const i = arr.findIndex((x) => x.id === m.id); if (i < 0) return;
+  arr.splice(i, 1);
+  if (where === 'front') arr.push(m);
+  else if (where === 'back') arr.unshift(m);
+  else if (where === 'up') arr.splice(Math.min(arr.length, i + 1), 0, m);
+  else arr.splice(Math.max(0, i - 1), 0, m);
+  engine.renderMedia(); engine.markDirty();
+}
+// Panel completo de opciones del objeto — rejilla clara con etiquetas.
+function objMoreSheet(m) {
+  const body = el('div');
+  const sh = sheet('Opciones del objeto', body);
+  const grid = el('div', { class: 'obj-grid' });
+  const item = (ic, label, fn, active) => grid.append(el('button', { class: 'obj-opt' + (active ? ' on' : ''), onclick: () => { fn(); } }, [
+    el('span', { class: 'oo-ic', html: icon(ic) }), el('span', { class: 'oo-lab', text: label }),
+  ]));
+  const refresh = () => { engine.renderMedia(); engine.markDirty(); renderMediaOverlay(engine.media); };
+
+  item('flipH', 'Voltear ↔', () => { m.flipH = !m.flipH; refresh(); }, m.flipH);
+  item('flipV', 'Voltear ↕', () => { m.flipV = !m.flipV; refresh(); }, m.flipV);
+  item('rotate', 'Girar 90°', () => { m.rot = ((m.rot || 0) + 90) % 360; refresh(); });
+  item('refresh', 'Quitar giro', () => { m.rot = 0; refresh(); });
+  item('upload', 'Traer al frente', () => { reorderObj(m, 'front'); renderMediaOverlay(engine.media); });
+  item('download', 'Enviar al fondo', () => { reorderObj(m, 'back'); renderMediaOverlay(engine.media); });
+  item('fit', 'Centrar', () => { m.x = (engine.docW - m.w) / 2; m.y = (engine.docH - m.h) / 2; refresh(); });
+  item('paper', 'Ajustar a la hoja', () => {
+    const k = Math.min(engine.docW * 0.9 / m.w, engine.docH * 0.9 / m.h);
+    if (m.type === 'text') m.fontSize = (m.fontSize || 40) * k;
+    m.w *= k; m.h *= k; m.x = (engine.docW - m.w) / 2; m.y = (engine.docH - m.h) / 2; refresh();
+  });
+  item('dup', 'Duplicar', () => { duplicateObj(m); sh.close(); });
+  item(m.locked ? 'unlock' : 'lock', m.locked ? 'Desbloquear' : 'Bloquear', () => { m.locked = !m.locked; refresh(); sh.close(); }, m.locked);
+  item('droplet', 'Estilo', () => { sh.close(); setTimeout(() => objStyleSheet(m), 260); });
+  item('zap', 'Interactivo', () => { sh.close(); setTimeout(() => objTapSheet(m), 260); }, !!m.tap);
+  body.append(grid);
+
+  // Tamaño y posición numéricos (precisión sin pelear con los dedos).
+  const num = (label, get, set, min, max, step = 1) => {
+    const inp = el('input', { class: 'input', type: 'number', value: Math.round(get()), min, max, step });
+    inp.oninput = () => { const v = +inp.value; if (!isNaN(v)) { set(Math.max(min, Math.min(max, v))); refresh(); } };
+    return el('div', { class: 'field' }, [el('label', { text: label }), inp]);
+  };
+  body.append(el('div', { class: 'obj-nums' }, [
+    num('Ancho', () => m.w, (v) => { const r = m.h / m.w; m.w = v; m.h = v * r; if (m.type === 'text') m.fontSize = v / 4; }, 20, 4000),
+    num('Giro °', () => m.rot || 0, (v) => { m.rot = v; }, -180, 180),
+  ]));
+  body.append(el('button', { class: 'btn btn-soft btn-block', style: { marginTop: '10px' }, html: icon('trash') + ' Eliminar objeto', onclick: () => { engine.removeMedia(m.id); selectedMediaId = null; sh.close(); } }));
 }
 // Editor de texto completo: contenido, color, tamaño, fuente, grosor,
 // alineación, opacidad y espaciado — con vista previa en vivo.
@@ -887,6 +959,51 @@ function openTextEditor(m) {
   function sync() { colorInput.value = /^#/.test(m.color) ? m.color : '#5a4e58'; }
 }
 
+// ---------- Dibujos interactivos ----------
+// Un objeto puede reaccionar cuando tu pareja lo TOCA en el visor: latir,
+// girar, revelar un mensaje escondido, soltar corazones o sonar.
+const TAP_ACTIONS = [
+  ['', 'Sin reacción', 'close'],
+  ['beat', 'Late al tocar', 'heart'],
+  ['spin', 'Gira al tocar', 'rotate'],
+  ['grow', 'Crece al tocar', 'transform'],
+  ['reveal', 'Revela un mensaje', 'chat'],
+  ['hearts', 'Suelta corazones', 'sparkle'],
+  ['sound', 'Suena al tocar', 'volume'],
+];
+function objTapSheet(m) {
+  const body = el('div');
+  const sh = sheet('Objeto interactivo', body);
+  body.append(el('p', { class: 'hint-line', text: 'Cuando tu pareja toque este objeto en el visor, pasará esto:' }));
+  const list = el('div', { class: 'rows' });
+  const paint = () => {
+    list.innerHTML = '';
+    TAP_ACTIONS.forEach(([id, label, ic]) => {
+      const on = (m.tap || '') === id;
+      list.append(el('button', { class: 'row tappable', style: { width: '100%' }, onclick: async () => {
+        m.tap = id || null;
+        if (id === 'reveal' && !m.tapMsg) {
+          const msg = await promptDialog({ title: 'Mensaje escondido', placeholder: 'Te amo…' });
+          m.tapMsg = msg || 'Te amo';
+        }
+        engine.markDirty(); renderMediaOverlay(engine.media); paint();
+      } }, [
+        el('div', { class: 'r-ic', html: icon(ic) }),
+        el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: label })]),
+        on ? el('span', { class: 'pill warm', text: 'Activa' }) : null,
+      ]));
+    });
+  };
+  paint();
+  body.append(list);
+  if (m.tap === 'reveal') {
+    body.append(el('button', { class: 'btn btn-ghost btn-block', style: { marginTop: '10px' }, html: icon('text') + ' Cambiar mensaje', onclick: async () => {
+      const msg = await promptDialog({ title: 'Mensaje escondido', value: m.tapMsg || '' });
+      if (msg) { m.tapMsg = msg; engine.markDirty(); }
+    } }));
+  }
+}
+
 function objAnimSheet(m) {
   const body = el('div');
   const sh = sheet('Animación del objeto', body);
@@ -926,7 +1043,7 @@ function startPinch(m, touches) {
   pinchState = { d0: Math.max(10, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)), a0: Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x), w0: m.w, h0: m.h, rot0: m.rot || 0, fs0: m.fontSize || 40 };
 }
 function updatePinch(m, touches) {
-  if (!pinchState) return;
+  if (!pinchState || m.locked) return;
   const pts = [...touches.values()];
   const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
   const a = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
@@ -941,24 +1058,66 @@ function updatePinch(m, touches) {
 }
 function docScale() { return engine.baseScale * engine.zoom; }
 function startDrag(e, m) {
+  if (m.locked) return;
   e.stopPropagation(); const sx = e.clientX, sy = e.clientY, ox = m.x, oy = m.y, sc = docScale();
-  const move = (ev) => { m.x = ox + (ev.clientX - sx) / sc; m.y = oy + (ev.clientY - sy) / sc; renderMediaOverlay(engine.media); };
-  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); engine.markDirty(); import('../core/sounds.js').then((x) => x.playFx('move')); };
+  const snap = 14 / sc;               // imán en px de documento
+  const move = (ev) => {
+    let nx = ox + (ev.clientX - sx) / sc, ny = oy + (ev.clientY - sy) / sc;
+    // Imán a los ejes centrales de la hoja, con guías visibles.
+    const cx = nx + m.w / 2, cy = ny + m.h / 2;
+    const gx = Math.abs(cx - engine.docW / 2) < snap, gy = Math.abs(cy - engine.docH / 2) < snap;
+    if (gx) nx = (engine.docW - m.w) / 2;
+    if (gy) ny = (engine.docH - m.h) / 2;
+    m.x = nx; m.y = ny;
+    renderMediaOverlay(engine.media);
+    showSnapGuides(gx, gy);
+  };
+  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); showSnapGuides(false, false); engine.markDirty(); import('../core/sounds.js').then((x) => x.playFx('move')); };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
 }
+// Guías de alineación (aparecen solo mientras el objeto se imanta al centro).
+function showSnapGuides(gx, gy) {
+  const layer = engine.mediaLayer; if (!layer) return;
+  let v = layer.querySelector('.snap-v'), h = layer.querySelector('.snap-h');
+  if (gx && !v) { v = el('div', { class: 'snap-v' }); layer.append(v); } else if (!gx && v) v.remove();
+  if (gy && !h) { h = el('div', { class: 'snap-h' }); layer.append(h); } else if (!gy && h) h.remove();
+}
 function startResize(e, m) {
-  e.stopPropagation(); const sx = e.clientX, sy = e.clientY, ow = m.w, oh = m.h, ratio = m.h / m.w, fs0 = m.fontSize || 40, sc = docScale();
-  const move = (ev) => { const nw = Math.max(20, ow + (ev.clientX - sx) / sc); m.w = nw; m.h = nw * ratio; if (m.type === 'text') m.fontSize = fs0 * (nw / ow); renderMediaOverlay(engine.media); };
-  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); engine.markDirty(); import('../core/sounds.js').then((x) => x.playFx('transform')); };
+  if (m.locked) return;
+  e.stopPropagation(); const sx = e.clientX, ow = m.w, ratio = m.h / m.w, fs0 = m.fontSize || 40, sc = docScale();
+  const move = (ev) => {
+    const nw = Math.max(20, ow + (ev.clientX - sx) / sc);
+    m.w = nw; m.h = nw * ratio;
+    if (m.type === 'text') m.fontSize = fs0 * (nw / ow);
+    renderMediaOverlay(engine.media);
+    showObjBadge(Math.round(m.w) + ' × ' + Math.round(m.h));
+  };
+  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); hideObjBadge(); engine.markDirty(); import('../core/sounds.js').then((x) => x.playFx('transform')); };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
 }
 function startRotate(e, m) {
+  if (m.locked) return;
   e.stopPropagation(); const rect = engine.mediaLayer.getBoundingClientRect(); const sc = docScale();
   const cx = rect.left + (m.x + m.w / 2) * sc, cy = rect.top + (m.y + m.h / 2) * sc;
-  const move = (ev) => { m.rot = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI + 90; renderMediaOverlay(engine.media); };
-  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); engine.markDirty(); };
+  const move = (ev) => {
+    let a = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI + 90;
+    // Imán cada 15°: encuadrar recto es fácil sin pelear con el dedo.
+    const near = Math.round(a / 15) * 15;
+    if (Math.abs(a - near) < 4) a = near;
+    m.rot = Math.round(a);
+    renderMediaOverlay(engine.media);
+    showObjBadge(m.rot + '°');
+  };
+  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); hideObjBadge(); engine.markDirty(); };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
 }
+// Etiqueta flotante con el tamaño/giro en vivo mientras se transforma.
+function showObjBadge(text) {
+  let b = document.querySelector('.obj-badge');
+  if (!b) { b = el('div', { class: 'obj-badge' }); document.body.append(b); }
+  b.textContent = text;
+}
+function hideObjBadge() { document.querySelector('.obj-badge')?.remove(); }
 
 // ---------- Biblioteca de assets ----------
 async function openAssetsPanel() {

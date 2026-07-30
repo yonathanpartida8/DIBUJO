@@ -257,8 +257,15 @@ export async function renderGallery(ctx) {
   function openViewer(d, isPartner) {
     const overlay = el('div', { class: 'viewer-overlay' });
     const stage = el('div', { class: 'viewer-stage' });
+    // Envoltorio con la MISMA relación de aspecto que el dibujo: así las zonas
+    // interactivas caen exactamente sobre los objetos, sin bandas negras.
+    const docW = d.doc?.w || 1080, docH = d.doc?.h || 1440;
+    const wrap = el('div', { class: 'viewer-wrap', style: { aspectRatio: `${docW} / ${docH}` } });
     const img = el('img', { class: 'viewer-img', src: d.thumb, alt: d.title || '' });
-    stage.append(img);
+    wrap.append(img);
+    const hotspots = buildHotspots(d, docW, docH);
+    if (hotspots) wrap.append(hotspots);
+    stage.append(wrap);
     const top = el('div', { class: 'viewer-top' }, [
       el('button', { class: 'icon-btn', html: icon('back'), onclick: close }),
       el('div', { class: 'viewer-title', text: d.title || t('studio.untitled') }),
@@ -277,9 +284,13 @@ export async function renderGallery(ctx) {
 
     // Transformación (pan + zoom) aplicada solo a la imagen.
     let scale = 1, tx = 0, ty = 0;
-    const applyT = () => { img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; };
+    const applyT = () => { wrap.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; };
     const pts = new Map(); let gesture = null, panStart = null;
-    stage.addEventListener('pointerdown', (e) => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); stage.setPointerCapture(e.pointerId);
+    stage.addEventListener('pointerdown', (e) => {
+      // Las zonas interactivas reciben su propio toque: capturar el puntero en
+      // el escenario robaba el click y nunca se disparaba la reacción.
+      if (e.target.closest?.('.hot-spot')) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); stage.setPointerCapture(e.pointerId);
       if (pts.size === 2) { const a = [...pts.values()]; gesture = { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), s: scale, cx: (a[0].x + a[1].x) / 2, cy: (a[0].y + a[1].y) / 2, tx, ty }; panStart = null; }
       else panStart = { x: e.clientX, y: e.clientY, tx, ty }; });
     stage.addEventListener('pointermove', (e) => {
@@ -300,6 +311,8 @@ export async function renderGallery(ctx) {
     body.append(
       item('pen', t('common.edit'), () => openDrawing(d)),
       item('play', t('studio.play'), () => openPlayer({ doc: d.doc, recording: d.recording, title: d.title })),
+      // Ver el dibujo tal y como lo recibirá tu pareja (con lo interactivo).
+      item('zap', (d.doc?.media || []).some((m) => m.tap) ? 'Probar interactivo' : 'Ver como lo verá', () => openViewer(d, false)),
       item('chat', 'Comentarios y reacciones', () => openComments(d)),
       item('paper', 'Mover a carpeta', () => moveToFolder(d)),
       item('send', 'Enviar a mi pareja', async () => { const { sendDrawingToPartner } = await import('./chat.js'); await sendDrawingToPartner(d); toast(t('toast.sent')); }),
@@ -336,4 +349,68 @@ export function openComments(d) {
   const send = el('button', { class: 'btn btn-primary', html: icon('send'), onclick: async () => { const txt = input.value.trim(); if (!txt) return; d.comments.push({ id: uid('c'), text: txt, from: 'me', ts: Date.now() }); if (!d.remote) await db.put('drawings', d); else fb.patchSharedDrawing?.(d.id, { comments: d.comments }); input.value = ''; renderComments(); list.scrollTop = list.scrollHeight; } });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send.click(); });
   body.append(el('div', { style: { display: 'flex', gap: '8px' } }, [el('div', { style: { flex: 1 } }, [input]), send]));
+}
+
+// ============================================================
+// Dibujos interactivos — el que recibe puede TOCAR los objetos que el autor
+// marcó y estos reaccionan: laten, giran, crecen, revelan un mensaje
+// escondido, sueltan corazones o suenan.
+// ============================================================
+const TAP_LABEL = 'Toca los elementos que brillan';
+function buildHotspots(d, docW, docH) {
+  const media = (d.doc?.media || []).filter((m) => m.tap);
+  if (!media.length) return null;
+  const layer = el('div', { class: 'viewer-hot' });
+  media.forEach((m) => {
+    const spot = el('button', {
+      class: 'hot-spot',
+      'aria-label': 'Elemento interactivo',
+      style: {
+        left: (m.x / docW * 100) + '%', top: (m.y / docH * 100) + '%',
+        width: (m.w / docW * 100) + '%', height: (m.h / docH * 100) + '%',
+        transform: `rotate(${m.rot || 0}deg)`,
+      },
+    });
+    spot.onclick = (e) => { e.stopPropagation(); fireTap(m, spot, layer); };
+    layer.append(spot);
+  });
+  // Pista inicial para que se note que el dibujo es interactivo.
+  const hint = el('div', { class: 'hot-hint', text: TAP_LABEL });
+  layer.append(hint);
+  setTimeout(() => hint.classList.add('out'), 3400);
+  setTimeout(() => hint.remove(), 4000);
+  return layer;
+}
+function fireTap(m, spot, layer) {
+  const fx = m.tap;
+  import('../core/sounds.js').then((s) => s.playFx(fx === 'sound' ? 'achieve' : 'tap')).catch(() => {});
+  if (navigator.vibrate) navigator.vibrate(12);
+  if (fx === 'beat' || fx === 'spin' || fx === 'grow') {
+    spot.classList.remove('fx-beat', 'fx-spin', 'fx-grow');
+    void spot.offsetWidth;                       // reinicia la animación
+    spot.classList.add('fx-' + fx);
+    setTimeout(() => spot.classList.remove('fx-' + fx), 900);
+    return;
+  }
+  if (fx === 'reveal') {
+    const b = el('div', { class: 'hot-msg', text: m.tapMsg || 'Te amo' });
+    const r = spot.style;
+    b.style.left = r.left; b.style.top = r.top;
+    layer.append(b);
+    requestAnimationFrame(() => b.classList.add('in'));
+    setTimeout(() => { b.classList.remove('in'); setTimeout(() => b.remove(), 300); }, 2600);
+    return;
+  }
+  if (fx === 'hearts') {
+    const rect = spot.getBoundingClientRect(), lr = layer.getBoundingClientRect();
+    for (let i = 0; i < 10; i++) {
+      const h = el('i', { class: 'hot-heart' });
+      h.style.left = ((rect.left - lr.left) + rect.width * (0.2 + Math.random() * 0.6)) + 'px';
+      h.style.top = ((rect.top - lr.top) + rect.height * 0.5) + 'px';
+      h.style.animationDelay = (i * 55) + 'ms';
+      h.style.setProperty('--dx', (Math.random() * 80 - 40) + 'px');
+      layer.append(h);
+      setTimeout(() => h.remove(), 1800 + i * 55);
+    }
+  }
 }

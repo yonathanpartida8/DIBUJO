@@ -5,6 +5,27 @@ distancia y en tiempo real. Interfaz premium en **español latino**, pastel
 refinado (no infantil), iconografía SVG profesional (sin emojis en la UI),
 inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
 
+## Novedades v10 (interactivos, objetos y música)
+
+- **Dibujos interactivos**: marca cualquier objeto como interactivo y elige su
+  reacción — *late*, *gira*, *crece*, **revela un mensaje escondido**, *suelta
+  corazones* o *suena*. Quien lo recibe ve las zonas brillar y, al tocarlas,
+  ocurre la magia. Puedes probarlo antes de enviar con **“Probar interactivo”**.
+- **Objetos con muchas más opciones**: voltear ↔ y ↕, girar 90°, quitar giro,
+  traer al frente / enviar al fondo, centrar, ajustar a la hoja, duplicar,
+  **bloquear**, estilo e interactivo, más **ancho y giro numéricos**.
+- **Manipular es más fácil**: imán al centro de la hoja con **guías**, imán de
+  rotación cada 15°, y una **etiqueta en vivo** con el tamaño o los grados
+  mientras transformas. Los objetos bloqueados no se mueven por accidente.
+- **Música rehecha**: disco giratorio, play/pausa, **barra de progreso tocable**,
+  tiempo, volumen, *Repetir* y *Sonar al abrir el dibujo*, con Cambiar y Quitar.
+- **Bugs corregidos**: elegir canción en un dibujo recién creado lanzaba un
+  error y no se guardaba; el aviso de logro tapaba la cabecera y el contenido
+  de los paneles; los botones “+ Añadir / + Nueva carpeta” medían 19 px; la
+  galería mostraba dos chips “Todos” duplicados; el audio de un panel seguía
+  sonando al cerrarlo; y en el visor la captura del puntero impedía que los
+  elementos interactivos respondieran al toque.
+
 ## Novedades v9 (trazos, iconos y rendimiento)
 
 - **Se acabaron los "objetos duplicados"**: los pinceles con grano (lápiz,

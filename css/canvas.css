@@ -310,3 +310,46 @@
 .mus-actions { display: flex; gap: 8px; margin-top: 14px; }
 .mus-actions .btn { flex: 1; }
 .mus-empty { text-align: center; display: grid; gap: 6px; justify-items: center; padding: 18px 10px 6px; }
+
+/* ============================================================
+   v10 — Objetos: opciones, guías, etiqueta y estados
+   ============================================================ */
+/* Rejilla de opciones del objeto */
+.obj-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.obj-opt {
+  display: grid; justify-items: center; gap: 6px; padding: 12px 6px;
+  border-radius: var(--r-md); background: var(--surface-inset);
+  border: 1px solid var(--line); transition: transform var(--dur-2) var(--ease-soft);
+}
+.obj-opt:active { transform: scale(0.94); }
+.obj-opt.on { background: var(--primary-soft); border-color: var(--primary); }
+.oo-ic svg { width: 22px; height: 22px; fill: none; stroke: var(--text-2); }
+.obj-opt.on .oo-ic svg { stroke: var(--primary); }
+.oo-lab { font-size: 0.72rem; font-weight: 600; color: var(--text-2); text-align: center; line-height: 1.2; }
+.obj-opt.on .oo-lab { color: var(--primary); }
+.obj-nums { display: flex; gap: 10px; margin-top: 14px; }
+.obj-nums .field { flex: 1; margin: 0; }
+
+/* Guías de alineación al centro (imán) */
+.snap-v, .snap-h { position: absolute; background: var(--accent); opacity: .85; pointer-events: none; z-index: 70; }
+.snap-v { left: 50%; top: 0; bottom: 0; width: calc(2px * var(--inv, 1)); transform: translateX(-50%); }
+.snap-h { top: 50%; left: 0; right: 0; height: calc(2px * var(--inv, 1)); transform: translateY(-50%); }
+
+/* Etiqueta de tamaño/giro en vivo */
+.obj-badge {
+  position: fixed; left: 50%; top: calc(var(--safe-t) + 84px); transform: translateX(-50%);
+  background: var(--text); color: var(--surface); padding: 7px 14px; border-radius: var(--r-pill);
+  font-size: 0.82rem; font-weight: 700; z-index: 1250; pointer-events: none;
+  font-variant-numeric: tabular-nums; box-shadow: var(--shadow-md);
+}
+
+/* Objeto bloqueado / interactivo */
+.media-obj.locked.selected { border-style: dashed; border-color: var(--text-3); box-shadow: none; }
+.media-obj .handle.lock { left: 50%; margin-left: calc(-19px * var(--inv, 1)); top: calc(-19px * var(--inv, 1)); color: var(--text-2); }
+/* Marca discreta en objetos con reacción al tocar */
+.media-obj.interactive.selected::after {
+  content: ''; position: absolute; right: calc(-6px * var(--inv, 1)); top: calc(-6px * var(--inv, 1));
+  width: calc(12px * var(--inv, 1)); height: calc(12px * var(--inv, 1));
+  border-radius: 50%; background: var(--accent); border: calc(2px * var(--inv, 1)) solid #fff;
+}
+.ob-btn.ob-del { color: #e06a7e; }
