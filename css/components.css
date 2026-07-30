@@ -419,16 +419,20 @@ body[data-route^="studio"] .vinyl-mini {
 .ach-rar { display: inline-block; margin-top: 6px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--rar); }
 .ach-reward { font-size: 0.68rem; margin-top: 4px; color: var(--text-2); }
 .ach-pop {
-  position: fixed; top: calc(var(--safe-t) + 14px); left: 50%; transform: translateX(-50%);
-  z-index: 1500; display: flex; align-items: center; gap: 12px;
+  /* Abajo: antes salía arriba y tapaba el título y los botones de la cabecera. */
+  position: fixed; bottom: calc(150px + var(--safe-b)); left: 50%; transform: translateX(-50%);
+  max-width: min(92vw, 400px); pointer-events: none;
+  /* Por debajo de hojas (900) y diálogos (1000): nunca tapa lo que estás usando. */
+  z-index: 850; display: flex; align-items: center; gap: 12px;
   background: var(--glass); backdrop-filter: blur(22px);
   border: 1.5px solid var(--rar); border-radius: var(--r-lg);
   box-shadow: 0 10px 34px var(--glow); padding: 12px 18px;
   animation: achIn 0.5s var(--ease-soft);
 }
-.ach-pop.out { opacity: 0; transform: translateX(-50%) translateY(-16px); transition: all var(--dur-3) var(--ease); }
-@keyframes achIn { from { opacity: 0; transform: translateX(-50%) translateY(-24px) scale(0.9); } }
-.ach-pop-emoji { font-size: 2rem; animation: heartbeat 1s var(--ease-soft) 2; }
+.ach-pop.out { opacity: 0; transform: translateX(-50%) translateY(16px); transition: all var(--dur-3) var(--ease); }
+@keyframes achIn { from { opacity: 0; transform: translateX(-50%) translateY(24px) scale(0.9); } }
+.ach-pop-ic { display: grid; place-items: center; flex: none; animation: heartbeat 1s var(--ease-soft) 2; }
+.ach-pop-ic svg { width: 30px; height: 30px; color: var(--rar); }
 .ach-pop-title { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--rar); }
 .ach-pop-name { font-weight: 800; }
 .ach-pop-more { font-size: 0.72rem; color: var(--text-2); }

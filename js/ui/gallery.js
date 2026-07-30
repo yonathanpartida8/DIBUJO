@@ -108,8 +108,14 @@ export async function renderGallery(ctx) {
     const title = el('div', { class: 'section-title', text: t('gallery.folders') });
     title.append(el('button', { class: 'more', text: '+ ' + t('gallery.newFolder'), onclick: newFolder }));
     foldersWrap.append(title);
+    // Sin carpetas no tiene sentido mostrar una fila con un solo chip suelto.
+    if (!folders.length) {
+      foldersWrap.append(el('p', { class: 'hint-line', text: 'Crea carpetas para ordenar sus dibujos.' }));
+      return;
+    }
     const scroll = el('div', { class: 'scroll-x' });
-    scroll.append(el('button', { class: 'chip' + (activeFolder === null ? ' active' : ''), text: t('gallery.all'), onclick: () => { activeFolder = null; syncFolderChips(); renderFeed(); } }));
+    // "Todas" (no "Todos"): evita duplicar el chip del filtro de arriba.
+    scroll.append(el('button', { class: 'chip' + (activeFolder === null ? ' active' : ''), text: 'Todas', onclick: () => { activeFolder = null; syncFolderChips(); renderFeed(); } }));
     folders.forEach((f) => scroll.append(el('button', { class: 'chip' + (activeFolder === f.id ? ' active' : ''), dataset: { fid: f.id }, text: f.name, onclick: () => { activeFolder = f.id; syncFolderChips(); renderFeed(); }, oncontextmenu: (e) => { e.preventDefault(); folderMenu(f); } })));
     foldersWrap.append(scroll);
     function syncFolderChips() { scroll.querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', (c.dataset.fid || null) === activeFolder)); }

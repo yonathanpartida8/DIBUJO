@@ -282,3 +282,31 @@
 .st-sizenum:active { transform: scale(0.92); }
 .st-send { background: linear-gradient(135deg, var(--rose), var(--rose-deep)); border: none; }
 .st-send svg { fill: #fff; }
+
+/* ============================================================
+   v10 — Reproductor de música del dibujo
+   ============================================================ */
+.mus-player {
+  display: flex; align-items: center; gap: 14px; padding: 14px;
+  border-radius: var(--r-lg); background: var(--surface-inset); border: 1px solid var(--line);
+}
+.mus-disc {
+  width: 62px; height: 62px; border-radius: 50%; flex: none; position: relative;
+  background: radial-gradient(circle at center, var(--surface) 16%, #3a3244 18%, #2b2632 62%, #3a3244 64%, #2b2632 100%);
+  box-shadow: 0 4px 14px rgba(50,36,48,.32);
+}
+.mus-disc i { position: absolute; inset: 42%; border-radius: 50%; background: var(--rose); }
+.mus-disc.spin { animation: vinylSpin 3.2s linear infinite; }
+.mus-meta { flex: 1; min-width: 0; }
+.mus-name { font-weight: 800; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mus-sub { color: var(--text-2); font-size: 0.75rem; margin-bottom: 8px; }
+.mus-bar { height: 6px; border-radius: 999px; background: var(--line-2); overflow: hidden; cursor: pointer; touch-action: none; }
+.mus-fill { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--rose), var(--lav)); }
+.mus-time { font-size: 0.7rem; color: var(--text-3); margin-top: 5px; font-variant-numeric: tabular-nums; }
+.mus-play { flex: none; width: 50px; height: 50px; background: linear-gradient(135deg, var(--rose), var(--rose-deep)); border: none; }
+.mus-play svg { fill: #fff; width: 24px; height: 24px; }
+.mus-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 0 4px; }
+.mus-ic svg { width: 20px; height: 20px; fill: none; stroke: var(--text-2); }
+.mus-actions { display: flex; gap: 8px; margin-top: 14px; }
+.mus-actions .btn { flex: 1; }
+.mus-empty { text-align: center; display: grid; gap: 6px; justify-items: center; padding: 18px 10px 6px; }

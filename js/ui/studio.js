@@ -380,6 +380,13 @@ bus.on('engine:recent', (list) => {
   const merged = [...list, ...prev].filter((c, i, a) => a.indexOf(c) === i).slice(0, 14);
   store.set('colors', { recent: merged });
 });
+// Garantiza que exista el registro del dibujo. doSave() sale antes de crearlo
+// cuando el lienzo está vacío, así que adjuntar música/ajustes a un dibujo
+// recién creado lanzaba "Cannot set properties of null".
+function ensureDoc() {
+  if (!current) current = { id: uid('draw'), createdAt: Date.now(), folderId: null, favorite: false, comments: [], reactions: {}, owner: 'me' };
+  return current;
+}
 async function doSave(showState) {
   if (recorder.isEmpty && !current) return;
   const now = Date.now();
@@ -978,20 +985,98 @@ async function openAssetsPanel() {
 }
 
 // ---------- Música (tocadiscos) ----------
+// Apartado de música del dibujo: reproductor real (disco, play/pausa,
+// progreso), volumen, repetición, sonar al abrir y canciones recientes.
 function openMusic() {
   const body = el('div');
   const s = sheet(t('studio.music'), body);
-  if (current?.music) {
-    body.append(el('div', { class: 'card', style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' } }, [
-      el('div', { class: 'r-ic', html: icon('music') }),
-      el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: current.music.name || 'Canción' }), el('div', { class: 'r-sub', text: 'La canción de este dibujo' })]),
-      el('button', { class: 'btn btn-soft btn-sm', text: '▶ Tocar', onclick: async () => { const { openVinyl } = await import('./vinyl.js'); s.close(); openVinyl({ id: current.id + '_music', name: current.music.name, src: current.music.src, kind: 'song' }); } }),
-      el('button', { class: 'icon-btn', html: icon('trash'), onclick: () => { current.music = null; engine.markDirty(); s.close(); openMusic(); } }),
+  const m = current?.music;
+
+  if (m) {
+    const audio = el('audio', { src: m.src, preload: 'metadata' });
+    audio.loop = m.loop !== false;
+    audio.volume = m.volume ?? 0.8;
+
+    const disc = el('div', { class: 'mus-disc' }, [el('i')]);
+    const time = el('div', { class: 'mus-time', text: '0:00 / --:--' });
+    const bar = el('div', { class: 'mus-bar' }, [el('i', { class: 'mus-fill' })]);
+    const playBtn = el('button', { class: 'icon-btn mus-play', html: icon('playFilled'), 'aria-label': 'Reproducir' });
+
+    const fmt = (v) => (isFinite(v) ? `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}` : '--:--');
+    const sync = () => {
+      const d = audio.duration;
+      bar.querySelector('.mus-fill').style.width = (d ? (audio.currentTime / d) * 100 : 0) + '%';
+      time.textContent = `${fmt(audio.currentTime)} / ${fmt(d)}`;
+    };
+    audio.ontimeupdate = sync; audio.onloadedmetadata = sync;
+    audio.onplay = () => { playBtn.innerHTML = icon('pauseFilled'); disc.classList.add('spin'); };
+    audio.onpause = () => { playBtn.innerHTML = icon('playFilled'); disc.classList.remove('spin'); };
+    playBtn.onclick = () => { if (audio.paused) audio.play().catch(() => toast('No se pudo reproducir')); else audio.pause(); };
+    // Tocar la barra salta a ese punto.
+    bar.onpointerdown = (e) => {
+      const r = bar.getBoundingClientRect();
+      if (audio.duration) audio.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * audio.duration;
+      sync();
+    };
+    s.box.addEventListener('sheetclose', () => { audio.pause(); audio.src = ''; }, { once: true });
+
+    const vol = el('input', { class: 'slider slim', type: 'range', min: 0, max: 100, value: Math.round((m.volume ?? 0.8) * 100) });
+    const setFill = () => vol.style.setProperty('--fill', vol.value + '%');
+    setFill();
+    vol.oninput = () => { audio.volume = +vol.value / 100; m.volume = audio.volume; setFill(); engine.markDirty(); };
+
+    body.append(
+      el('div', { class: 'mus-player' }, [
+        disc,
+        el('div', { class: 'mus-meta' }, [
+          el('div', { class: 'mus-name', text: m.name || 'Canción' }),
+          el('div', { class: 'mus-sub', text: 'La canción de este dibujo' }),
+          bar, time,
+        ]),
+        playBtn,
+      ]),
+      el('div', { class: 'mus-row' }, [
+        el('span', { class: 'mus-ic', html: icon('volume') }),
+        vol,
+      ]),
+      el('div', { class: 'rows', style: { marginTop: '12px' } }, [
+        switchRow('loop', 'Repetir', m.loop !== false, (v) => { m.loop = v; audio.loop = v; engine.markDirty(); }),
+        switchRow('play', 'Sonar al abrir el dibujo', m.autoplay !== false, (v) => { m.autoplay = v; engine.markDirty(); }),
+      ]),
+      el('div', { class: 'mus-actions' }, [
+        el('button', { class: 'btn btn-ghost', html: icon('music') + ' Cambiar', onclick: () => { audio.pause(); pickSong(s); } }),
+        el('button', { class: 'btn btn-soft', html: icon('trash') + ' Quitar', onclick: () => { audio.pause(); current.music = null; engine.markDirty(); s.close(); setTimeout(openMusic, 280); } }),
+      ]),
+    );
+  } else {
+    body.append(el('div', { class: 'mus-empty' }, [
+      el('div', { class: 'big-ic big-ic-lg', html: icon('music') }),
+      el('div', { style: { fontWeight: 700 }, text: 'Este dibujo aún no tiene canción' }),
+      el('div', { style: { color: 'var(--text-2)', fontSize: '0.85rem' }, text: 'Elige una y sonará cuando lo abran.' }),
     ]));
+    body.append(el('button', { class: 'btn btn-primary btn-block', style: { marginTop: '14px' }, html: icon('music') + ' Elegir canción', onclick: () => pickSong(s) }));
   }
-  body.append(el('button', { class: 'btn btn-primary btn-block', html: icon('music') + ' Elegir canción para este dibujo', onclick: () => pickAudioFile(async (src, name) => { if (!current) await doSave(true); current.music = { src, name, loop: true, volume: 0.8, autoplay: true }; engine.markDirty(); s.close(); const { openVinyl } = await import('./vinyl.js'); openVinyl({ id: current.id + '_music', name, src, kind: 'song' }); }) }));
-  body.append(el('button', { class: 'btn btn-ghost btn-block', style: { marginTop: '8px' }, text: '💿 Abrir tocadiscos', onclick: async () => { const { openVinyl } = await import('./vinyl.js'); s.close(); openVinyl(); } }));
-  body.append(el('p', { style: { color: 'var(--text-3)', fontSize: '0.78rem', marginTop: '10px', textAlign: 'center' }, text: 'Cada dibujo puede tener su propia música. Suena en el tocadiscos al abrirlo. 💿' }));
+
+  body.append(el('button', { class: 'btn btn-ghost btn-block', style: { marginTop: '10px' }, html: icon('loop') + ' Abrir tocadiscos', onclick: async () => { const { openVinyl } = await import('./vinyl.js'); s.close(); openVinyl(); } }));
+}
+function pickSong(s) {
+  pickAudioFile(async (src, name) => {
+    ensureDoc();
+    current.music = { src, name, loop: true, volume: 0.8, autoplay: true };
+    engine.markDirty();
+    await doSave(false);
+    s.close();
+    setTimeout(openMusic, 280);
+  });
+}
+function switchRow(ic, title, checked, onChange) {
+  const input = el('input', { type: 'checkbox' }); input.checked = checked;
+  input.onchange = () => onChange(input.checked);
+  return el('div', { class: 'row' }, [
+    el('div', { class: 'r-ic', html: icon(ic) }),
+    el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: title })]),
+    el('label', { class: 'switch' }, [input, el('span', { class: 'track' })]),
+  ]);
 }
 function pickAudioFile(cb) {
   const inp = el('input', { type: 'file', accept: 'audio/*', style: { display: 'none' } });

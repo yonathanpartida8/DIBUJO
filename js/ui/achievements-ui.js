@@ -5,6 +5,7 @@
 import { el } from '../core/utils.js';
 import { store } from '../core/store.js';
 import { bus } from '../core/bus.js';
+import { icon } from './icons.js';
 import { sheet } from '../core/ui.js';
 import { ACHIEVEMENTS, RARITIES, computeMetrics, progressFor } from '../couples/achievements.js';
 
@@ -51,7 +52,7 @@ export async function openAchievements() {
 bus.on('achieve:unlocked', (list) => {
   const a = list[0];
   const n = el('div', { class: 'ach-pop', style: { '--rar': a.rarity.color, '--glow': a.rarity.glow } }, [
-    el('div', { class: 'ach-pop-emoji', text: a.emoji }),
+    el('div', { class: 'ach-pop-ic', html: icon('trophy') }),
     el('div', {}, [
       el('div', { class: 'ach-pop-title', text: '¡Logro desbloqueado!' }),
       el('div', { class: 'ach-pop-name', text: `${a.name} · ${a.rarity.name}` }),
