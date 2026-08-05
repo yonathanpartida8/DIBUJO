@@ -11,6 +11,8 @@ export const ICONS = {
   redo: P('M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'),
   layers: M([['M12 2.8l8.6 4.6a.5.5 0 010 .9L12 12.9 3.4 8.3a.5.5 0 010-.9z M3.2 12.4l8.8 4.7 8.8-4.7 M3.2 16.6l8.8 4.7 8.8-4.7']]),
   more: P('M12 6a1.6 1.6 0 100-3.2A1.6 1.6 0 0012 6zm0 7.6a1.6 1.6 0 100-3.2 1.6 1.6 0 000 3.2zm0 7.6a1.6 1.6 0 100-3.2 1.6 1.6 0 000 3.2z'),
+  reply: M([['M9.2 7.4L4.4 12l4.8 4.6 M4.4 12h8.4a6.4 6.4 0 016.4 6.4v1.2']]),
+  pin: M([['M9.4 3.6h5.2v5.2l2.9 3.3a1 1 0 01-.75 1.66H7.25a1 1 0 01-.75-1.66l2.9-3.3z M12 13.76V20.4']]),
   pen: M([['M4 20.5h4.2L20 8.7a2.4 2.4 0 00-3.4-3.4L4.8 17.1z M15.6 6.6l3.4 3.4 M4.8 17.1l2.9 2.9']]),
   bucket: M([['M8.2 9.6l5.6-5.6a1.3 1.3 0 011.9 0l4.3 4.3a1.3 1.3 0 010 1.9l-6.6 6.6a2.4 2.4 0 01-3.4 0l-2.9-2.9a2.4 2.4 0 01.1-3.4z M7.6 10.2L16 9.8 M19.4 16.4c1 1.4 1.7 2.6 1.7 3.3a1.7 1.7 0 01-3.4 0c0-.7.7-1.9 1.7-3.3z']]),
   dropper: M([['M17.4 3.2a2.9 2.9 0 014.1 4.1l-1.9 1.9 M13.6 5.4l5 5 M11.8 7.2l-8 8L3.4 20l4.8-.4 8-8 M10.6 8.4l5 5']]),
@@ -50,7 +52,12 @@ export const ICONS = {
   flipV: P('M3 12h18M7 7l5-4 5 4H7zm0 10l5 4 5-4H7z', 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"'),
   rotate: P('M21 12a9 9 0 11-3-6.7M21 3v5h-5', 'fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"'),
   sticker: M([['M20 12.6L12.6 20H6a2 2 0 01-2-2V6a2 2 0 012-2h12a2 2 0 012 2z M12.6 20v-5.4a2 2 0 012-2H20']]),
-  select: M([['M4 9V5.8A1.8 1.8 0 015.8 4H9 M15 4h3.2A1.8 1.8 0 0120 5.8V9 M20 15v3.2a1.8 1.8 0 01-1.8 1.8H15 M9 20H5.8A1.8 1.8 0 014 18.2V15']]),
+  // "Seleccionar todo": marco punteado con las asas, para no confundirse con
+  // "Ajustar a la vista", que usa las mismas esquinas en ángulo.
+  select: M([
+    ['M4.6 4.6h14.8v14.8H4.6z', `${STR} stroke-dasharray="3 2.6"`],
+    ['M4.6 4.6h0M19.4 4.6h0M4.6 19.4h0M19.4 19.4h0', 'fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"'],
+  ]),
 
   /* ---- Herramientas de dibujo — un implemento único y legible por pincel ---- */
   toolPencil: M([['M4 20l1-4L16 5a1.8 1.8 0 012.5 0L20 6.5a1.8 1.8 0 010 2.5L9 20l-4 1zM14.5 6.5l3 3M6 15l3 3']]),

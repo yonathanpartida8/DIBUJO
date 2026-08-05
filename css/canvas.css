@@ -371,30 +371,103 @@
 }
 @keyframes tlSpin { to { transform: rotate(360deg); } }
 
-/* Paleta de tldraw alineada con el tema pastel de la app */
-.tl-host .tl-theme__light {
-  --color-background: var(--surface);
-  --color-low: var(--surface-inset);
-  --color-panel: var(--surface);
-  --color-panel-contrast: var(--surface);
-  --color-selected: var(--primary);
-  --color-selection-stroke: var(--primary);
-  --color-focus: var(--primary);
-  --color-text-0: var(--text);
-  --color-text-1: var(--text-2);
+/* ------------------------------------------------------------
+   tldraw con la piel de Dibujo: redondo, pastel y amable.
+   Los nombres de clase son los de tldraw 5 (tlui-main-toolbar__*).
+   ------------------------------------------------------------ */
+.tl-host { font-family: var(--font) !important; }
+.tl-host .tl-theme__light, .tl-host .tl-theme__dark {
+  --tl-color-panel: var(--surface);
+  --tl-color-panel-contrast: var(--surface);
+  --tl-color-low: var(--surface-inset);
+  --tl-color-muted-1: var(--line);
+  --tl-color-muted-2: var(--line-2);
+  --tl-color-selected: var(--rose-deep);
+  --tl-color-selected-contrast: #fff;
+  --tl-color-selection-stroke: var(--rose-deep);
+  --tl-color-selection-fill: rgba(232,137,158,.14);
+  --tl-color-focus: var(--rose-deep);
+  --tl-color-text-0: var(--text);
+  --tl-color-text-1: var(--text-2);
+  --tl-color-text-3: var(--text-3);
 }
-/* Panel y barra con el redondeo y la sombra del resto de la app */
-.tl-host .tlui-layout__top__left .tlui-style-panel,
-.tl-host .tlui-toolbar__tools,
-.tl-host .tlui-style-panel,
-.tl-host .tlui-menu {
-  border-radius: var(--r-lg) !important;
-  box-shadow: 0 2px 6px rgba(70,45,60,.08), 0 16px 34px -16px rgba(70,45,60,.4) !important;
+
+/* Pastilla de herramientas: flotante, con aire y cómoda para el pulgar */
+.tl-host .tlui-main-toolbar__tools {
+  border-radius: var(--r-pill) !important;
+  padding: 5px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 6px rgba(70,45,60,.08), 0 14px 30px -14px rgba(70,45,60,.5) !important;
+}
+.tl-host .tlui-main-toolbar__inner { gap: 7px !important; align-items: flex-end !important; max-width: 100%; }
+.tl-host .tlui-toolbar { padding: 0 7px calc(var(--safe-b) + 10px); }
+
+/* Botones redondos y con buen objetivo táctil */
+.tl-host .tlui-button {
+  border-radius: 50% !important;
+  transition: transform .16s var(--ease-soft), background-color .2s var(--ease);
+}
+.tl-host .tlui-button:active { transform: scale(.9); }
+.tl-host .tlui-button__tool { height: 44px !important; width: 44px !important; }
+/* Móviles estrechos: mismo diseño, un punto más compacto */
+@media (max-width: 370px) {
+  .tl-host .tlui-button__tool { height: 40px !important; width: 40px !important; }
+  .tl-host .tlui-main-toolbar__tools { padding: 4px !important; }
+  .tl-host .tlui-main-toolbar__inner { gap: 5px !important; }
+}
+/* tldraw encoge el icono a 16 px en móvil: se pierde el dibujo */
+.tl-host .tlui-layout__mobile .tlui-main-toolbar--horizontal .tlui-button__tool > .tlui-icon,
+.tl-host .tlui-button__tool > .tlui-icon { width: 23px !important; height: 23px !important; }
+.tl-host .tlui-button__icon > .tlui-icon { width: 19px; height: 19px; }
+
+/* Herramienta activa: tldraw pinta el fondo con ::after — ahí va el rosa */
+.tl-host .tlui-button__tool[aria-pressed="true"]:not(:disabled, [data-disabled])::after {
+  inset: 2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--rose), var(--rose-deep)) !important;
+  box-shadow: 0 3px 10px rgba(232,137,158,.5);
+}
+.tl-host .tlui-button__tool[aria-pressed="true"] { color: #fff !important; }
+
+/* Fila de acciones sobre la barra: pastilla propia, no un pegote gris */
+.tl-host .tlui-main-toolbar--horizontal .tlui-main-toolbar__extras { height: 46px; top: -2px; }
+.tl-host .tlui-main-toolbar__extras__controls {
+  background: var(--surface) !important;
   border: 1px solid var(--line) !important;
+  border-radius: var(--r-pill) !important;
+  padding: 3px 4px !important;
+  margin-left: 0 !important;
+  box-shadow: 0 2px 6px rgba(70,45,60,.08), 0 10px 24px -14px rgba(70,45,60,.5);
 }
-/* Objetivos táctiles cómodos en móvil */
-.tl-host .tlui-button { min-height: 44px; min-width: 44px; }
-.tl-host .tlui-toolbar { padding-bottom: calc(var(--safe-b) + 4px); }
+.tl-host .tlui-main-toolbar__extras__controls .tlui-button { height: 38px !important; width: 38px !important; }
+/* Deshacer y rehacer ya viven en la barra superior de la app: sin duplicados */
+.tl-host [data-testid="quick-actions.undo"],
+.tl-host [data-testid="quick-actions.redo"] { display: none !important; }
+
+/* El botón de estilos comparte el mismo lenguaje que la barra */
+.tl-host .tlui-main-toolbar__mobile-style-panel {
+  border-radius: 50% !important;
+  padding: 5px !important;
+  border: 1px solid var(--line);
+}
+
+/* Paneles, menús y globos con el mismo redondeo que la app */
+.tl-host .tlui-style-panel,
+.tl-host .tlui-menu,
+.tl-host .tlui-popover__content,
+.tl-host .tlui-actions-menu,
+.tl-host .tlui-toast__container,
+.tl-host .tlui-layout__top__right > * {
+  border-radius: var(--r-lg) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: 0 2px 6px rgba(70,45,60,.08), 0 16px 34px -16px rgba(70,45,60,.5) !important;
+}
+/* Muestras de color más grandes y redondas */
+.tl-host .tlui-buttons__grid .tlui-button { min-width: 42px; min-height: 42px; }
+/* Menos ruido: fuera el minimapa y el contador de zoom */
+.tl-host .tlui-navigation-panel,
+.tl-host .tlui-debug-panel { display: none !important; }
 /* El botón de enviar de la app mantiene su color */
 .st-send { background: linear-gradient(135deg, var(--rose), var(--rose-deep)); border: none; }
 .st-send svg { fill: #fff; }
@@ -403,12 +476,3 @@
 .st-title-btn .n { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .st-title-btn .save-state { font-size: 0.68rem; color: var(--text-3); }
 .icon-btn:disabled { opacity: .35; pointer-events: none; }
-/* Acento de tldraw = rosa de la app (la herramienta activa deja de ser azul) */
-.tl-host .tl-theme__light, .tl-host .tl-theme__dark {
-  --color-selected: var(--rose-deep);
-  --color-selected-contrast: #fff;
-  --color-focus: var(--rose-deep);
-}
-.tl-host .tlui-button__tool[aria-pressed="true"],
-.tl-host .tlui-button[data-state="selected"] { background: var(--rose-deep) !important; color: #fff !important; }
-.tl-host .tlui-button__tool[aria-pressed="true"] .tlui-icon { color: #fff !important; }

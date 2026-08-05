@@ -3,7 +3,7 @@
 // la app sigue sin necesitar build en tiempo de ejecución: funciona en
 // GitHub Pages, en file:// (Capacitor) y offline con el service worker.
 import * as esbuild from 'esbuild';
-import { copyFileSync, cpSync, mkdirSync, statSync } from 'node:fs';
+import { cpSync, mkdirSync, statSync } from 'node:fs';
 
 mkdirSync(new URL('../vendor/', import.meta.url), { recursive: true });
 
@@ -18,14 +18,14 @@ await esbuild.build({
   sourcemap: false,
   jsx: 'automatic',
   define: { 'process.env.NODE_ENV': '"production"' },
-  loader: { '.js': 'jsx', '.woff2': 'dataurl', '.svg': 'dataurl', '.png': 'dataurl' },
+  loader: { '.js': 'jsx', '.css': 'text', '.woff2': 'dataurl', '.svg': 'dataurl', '.png': 'dataurl' },
   logOverride: { 'direct-eval': 'silent' },
 });
 
-copyFileSync(
-  new URL('../node_modules/tldraw/tldraw.css', import.meta.url),
-  new URL('../vendor/tldraw.css', import.meta.url),
-);
+// La hoja de tldraw NO se copia aparte: el loader '.css': 'text' la mete
+// dentro del bundle y src/tldraw-entry.jsx la inyecta al montar. Servirla como
+// archivo suelto era justo lo que dejaba el editor invisible cuando el móvil
+// tenía una copia vieja en caché.
 
 // Fuentes, iconos y traducciones LOCALES: por defecto tldraw los pide a
 // cdn.tldraw.com, lo que rompería la app sin conexión y en file:// (Capacitor).
@@ -39,4 +39,3 @@ for (const dir of ['fonts', 'icons', 'embed-icons', 'translations']) {
 
 const kb = (u) => Math.round(statSync(u).size / 1024) + ' KB';
 console.log('vendor/tldraw.bundle.js', kb(out));
-console.log('vendor/tldraw.css      ', kb(new URL('../vendor/tldraw.css', import.meta.url)));

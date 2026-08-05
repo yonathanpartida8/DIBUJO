@@ -107,7 +107,9 @@
 
 /* ---------- List rows (settings) ---------- */
 .rows { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
-.row { display: flex; align-items: center; gap: var(--s-3); padding: 15px var(--s-4); border-bottom: 1px solid var(--line); }
+/* text-align explícito: muchas filas son <button>, y un botón centra su texto
+   por defecto — los títulos de las hojas salían flotando en mitad de la fila. */
+.row { display: flex; align-items: center; gap: var(--s-3); padding: 15px var(--s-4); border-bottom: 1px solid var(--line); text-align: start; }
 .row:last-child { border-bottom: none; }
 .row .r-ic { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--surface-3); flex: none; }
 .row .r-ic svg { width: 20px; height: 20px; fill: var(--text-2); }

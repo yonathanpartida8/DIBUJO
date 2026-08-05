@@ -197,18 +197,20 @@ function messageActions(m, scroll) {
     s.close(); refreshBubble(scroll, m);
   } })));
   body.append(rx);
-  const item = (emoji, label, fn, danger) => el('button', { class: 'row tappable', style: { width: '100%', color: danger ? '#d66' : '' }, onclick: () => { s.close(); fn(); } }, [el('div', { class: 'r-ic', text: emoji }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: label })])]);
-  body.append(item('↩️', 'Responder', () => { replyTarget = m; showReplyBar(); }));
-  if (m.from === 'me' && m.type === 'text') body.append(item('✏️', 'Editar', async () => {
+  // Iconos SVG como en el resto de la app: los emoji del sistema cambiaban de
+  // forma y de color en cada teléfono y rompían el conjunto.
+  const item = (ic, label, fn, danger) => el('button', { class: 'row tappable', style: { width: '100%', color: danger ? '#d66' : '' }, onclick: () => { s.close(); fn(); } }, [el('div', { class: 'r-ic', html: icon(ic) }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: label })])]);
+  body.append(item('reply', 'Responder', () => { replyTarget = m; showReplyBar(); }));
+  if (m.from === 'me' && m.type === 'text') body.append(item('pen', 'Editar', async () => {
     const txt = await promptDialog({ title: 'Editar mensaje', value: m.text });
     if (txt != null && txt !== m.text) { m.text = txt; m.edited = true; await db.put('messages', m); fb.patchSharedMessage?.(m.id, { text: txt, edited: true }); refreshBubble(scroll, m); }
   }));
-  body.append(item(m.pinned ? '📌' : '📍', m.pinned ? 'Desfijar' : 'Fijar', async () => {
+  body.append(item('pin', m.pinned ? 'Desfijar' : 'Fijar', async () => {
     m.pinned = !m.pinned; await db.put('messages', m); fb.patchSharedMessage?.(m.id, { pinned: m.pinned });
-    renderPinned($('.chat-pinned')); toast(m.pinned ? '📌 Fijado' : 'Desfijado');
+    renderPinned($('.chat-pinned')); toast(m.pinned ? 'Mensaje fijado' : 'Mensaje desfijado');
   }));
-  if (m.type === 'text') body.append(item('📋', 'Copiar', () => { navigator.clipboard?.writeText(m.text); toast('Copiado ✓'); }));
-  if (m.from === 'me') body.append(item('🗑️', 'Eliminar', async () => {
+  if (m.type === 'text') body.append(item('dup', 'Copiar', () => { navigator.clipboard?.writeText(m.text); toast('Copiado'); }));
+  if (m.from === 'me') body.append(item('trash', 'Eliminar', async () => {
     if (!(await confirmDialog({ title: 'Eliminar mensaje', danger: true }))) return;
     m.deleted = true; await db.put('messages', m); fb.patchSharedMessage?.(m.id, { deleted: true });
     scroll.querySelector(`[data-mid="${m.id}"]`)?.remove();

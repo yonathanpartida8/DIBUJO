@@ -102,9 +102,13 @@ export async function renderStudio(ctx) {
   }
   api = mod.api;
 
-  ensureTldrawCss();
-
+  // Medidas CRÍTICAS en línea: si el móvil tuviera una versión antigua de
+  // css/canvas.css en caché, .tl-host quedaba con altura 0 y el editor se
+  // montaba INVISIBLE (barra superior bien, lienzo en blanco). Con estilos en
+  // línea el editor ya no depende de ninguna hoja externa para existir.
   const host = el('div', { class: 'tl-host' });
+  Object.assign(host.style, { position: 'absolute', inset: '0', width: '100%', height: '100%' });
+  Object.assign(stage.style, { position: 'relative', flex: '1', minHeight: '0', overflow: 'hidden' });
   stage.append(host);
 
   tl = mod.mount(host, {
@@ -130,6 +134,28 @@ export async function renderStudio(ctx) {
 
   await tl.ready;
   loading.remove();
+
+  // Comprobación de seguridad: el lienzo DEBE tener tamaño. Si algo externo
+  // (caché vieja, estilo heredado) lo dejó en cero, se repara al vuelo y, si
+  // aun así falla, se ofrece reintentar en vez de dejar la pantalla vacía.
+  requestAnimationFrame(() => {
+    const c = host.querySelector('.tl-container');
+    const r = c?.getBoundingClientRect();
+    if (!c || !r || r.height < 40) {
+      Object.assign(host.style, { position: 'absolute', inset: '0', minHeight: '60vh' });
+      if (c) Object.assign(c.style, { position: 'absolute', inset: '0' });
+      requestAnimationFrame(() => {
+        const r2 = host.querySelector('.tl-container')?.getBoundingClientRect();
+        if (!r2 || r2.height < 40) {
+          stage.append(el('div', { class: 'tl-loading' }, [
+            el('div', { class: 'big-ic big-ic-lg', html: icon('info') }),
+            el('div', { class: 'tl-loading-t', text: 'El lienzo no se pudo mostrar' }),
+            el('button', { class: 'btn btn-primary', style: { marginTop: '12px' }, text: 'Reintentar', onclick: () => location.reload() }),
+          ]));
+        }
+      });
+    }
+  });
 
   // Carga del contenido: documento de tldraw, o migración de un dibujo hecho
   // con el motor anterior (se inserta su imagen para poder seguir encima).
@@ -167,7 +193,9 @@ export async function renderStudio(ctx) {
       el('div', { class: 'save-state', id: 'st-savestate', text: '' }),
     ]);
     const send = el('button', { class: 'icon-btn st-send', html: icon('send'), 'aria-label': 'Enviar', onclick: openSendSheet });
-    const more = el('button', { class: 'icon-btn', html: icon('more'), 'aria-label': 'Más', onclick: openMenu });
+    // "Opciones" y no "Más": la barra de tldraw ya usa "Más" para su
+    // desbordamiento y con el mismo nombre no se distinguían al leerlos.
+    const more = el('button', { class: 'icon-btn', html: icon('more'), 'aria-label': 'Opciones del dibujo', onclick: openMenu });
     return el('div', { class: 'st-top' }, [back, undo, redo, title, send, more]);
   }
   function syncUndoRedo() {
@@ -175,13 +203,6 @@ export async function renderStudio(ctx) {
     if (u) u.disabled = !api?.canUndo(editor);
     if (r) r.disabled = !api?.canRedo(editor);
   }
-}
-
-// ---------- CSS del SDK (una sola vez) ----------
-function ensureTldrawCss() {
-  if (document.getElementById('tldraw-css')) return;
-  const href = new URL('../../vendor/tldraw.css', import.meta.url).href;
-  document.head.append(el('link', { id: 'tldraw-css', rel: 'stylesheet', href }));
 }
 
 // ---------- Migración de dibujos del motor anterior ----------

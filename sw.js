@@ -1,5 +1,6 @@
 // Service worker — offline-first app shell for Dibujo PWA.
-const VERSION = 'dibujo-v13.0.0';
+const VERSION = 'dibujo-v13.2.0';
+const BUST = '14';   // debe coincidir con ?v= de index.html
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 
@@ -8,12 +9,12 @@ const SHELL_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './css/reset.css',
-  './css/theme.css',
-  './css/layout.css',
-  './css/components.css',
-  './css/canvas.css',
-  './js/app.js',
+  `./css/reset.css?v=${BUST}`,
+  `./css/theme.css?v=${BUST}`,
+  `./css/layout.css?v=${BUST}`,
+  `./css/components.css?v=${BUST}`,
+  `./css/canvas.css?v=${BUST}`,
+  `./js/app.js?v=${BUST}`,
   './js/core/bus.js',
   './js/core/store.js',
   './js/core/db.js',
@@ -25,18 +26,17 @@ const SHELL_ASSETS = [
   './js/core/theme-apply.js',
   './js/core/firebase.js',
   './js/core/sounds.js',
-  './js/drawing/engine.js',
+  // Solo lo que la app carga de verdad. Desde que el lienzo es tldraw, el
+  // motor antiguo (engine, layers, history, canvas-gl, ruler, recorder) y el
+  // panel de recursos ya no se importan: precargarlos gastaba descarga y
+  // espacio de caché en cada instalación sin que nadie los pidiera nunca.
+  // Se conserva la cadena de reproducción de dibujos antiguos.
   './js/drawing/brushes.js',
   './js/drawing/paint.js',
-  './js/drawing/layers.js',
-  './js/drawing/history.js',
   './js/drawing/floodfill.js',
   './js/drawing/color.js',
-  './js/drawing/recorder.js',
   './js/drawing/player.js',
-  './js/drawing/ruler.js',
   './js/gl/aurora.js',
-  './js/gl/canvas-gl.js',
   './js/media/klipy.js',
   './js/ui/icons.js',
   './js/ui/home.js',
@@ -44,7 +44,6 @@ const SHELL_ASSETS = [
   './js/ui/login.js',
   './js/ui/widgets.js',
   './js/ui/vinyl.js',
-  './js/ui/assets.js',
   './js/ui/achievements-ui.js',
   './js/ui/studio.js',
   './js/ui/gallery.js',

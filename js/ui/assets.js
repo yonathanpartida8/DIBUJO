@@ -6,6 +6,7 @@
 import { el, uid, blobToDataURL } from '../core/utils.js';
 import { db } from '../core/db.js';
 import { sheet, toast } from '../core/ui.js';
+import { icon } from './icons.js';
 import { searchGifs } from '../media/klipy.js';
 import { BRUSH_LIST } from '../drawing/brushes.js';
 import { PAPER_TEXTURES } from '../drawing/engine.js';
@@ -88,8 +89,8 @@ export async function openAssets({ onPick } = {}) {
     } else if (cat === 'song') {
       panel.append(addBtn('audio/*', 'song'));
       const list = await userAssets('song');
-      list.forEach((a) => panel.append(el('button', { class: 'row tappable', style: { width: '100%' }, onclick: () => pick(a) }, [el('div', { class: 'r-ic', text: '🎵' }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: a.name })]), favBtn(a)])));
-      if (!list.length) panel.append(emptyNote('Su banda sonora empieza aquí 🎶'));
+      list.forEach((a) => panel.append(el('button', { class: 'row tappable', style: { width: '100%' }, onclick: () => pick(a) }, [el('div', { class: 'r-ic', html: icon('music') }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: a.name })]), favBtn(a)])));
+      if (!list.length) panel.append(emptyNote('Su banda sonora empieza aquí'));
     } else if (cat === 'brush') {
       const grid = el('div', { class: 'grid-auto' });
       BRUSH_LIST.filter((b) => !q || b.name.toLowerCase().includes(q.toLowerCase())).forEach((b) => grid.append(el('button', { class: 'tile', style: { padding: '12px', textAlign: 'center' }, onclick: () => pick({ kind: 'brush', id: b.id }) }, [el('div', { style: { fontSize: '1.5rem' }, text: b.emoji }), el('div', { class: 'meta', html: `<div class="t">${b.name}</div>` })])));
@@ -111,7 +112,7 @@ export async function openAssets({ onPick } = {}) {
       FRAMES.forEach(([name, emoji]) => grid.append(el('button', { class: 'tile', style: { padding: '14px', textAlign: 'center' }, onclick: () => pick({ kind: 'frame', emoji, name }) }, [el('div', { style: { fontSize: '1.5rem' }, text: emoji }), el('div', { class: 'meta', html: `<div class="t">${name}</div>` })])));
       panel.append(grid);
     } else if (cat === 'template') {
-      TEMPLATES.forEach((tp) => panel.append(el('button', { class: 'row tappable', style: { width: '100%' }, onclick: () => pick({ kind: 'template', ...tp }) }, [el('div', { class: 'r-ic', text: '📐' }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: tp.name }), el('div', { class: 'r-sub', text: `${tp.w} × ${tp.h}` })])])));
+      TEMPLATES.forEach((tp) => panel.append(el('button', { class: 'row tappable', style: { width: '100%' }, onclick: () => pick({ kind: 'template', ...tp }) }, [el('div', { class: 'r-ic', html: icon('paper') }), el('div', { class: 'r-main' }, [el('div', { class: 'r-title', text: tp.name }), el('div', { class: 'r-sub', text: `${tp.w} × ${tp.h}` })])])));
     }
   }
   function emptyNote(text) { return el('p', { style: { color: 'var(--text-3)', textAlign: 'center', padding: '10px', fontSize: '0.85rem' }, text }); }
