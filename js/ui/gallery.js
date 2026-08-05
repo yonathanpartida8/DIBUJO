@@ -314,7 +314,7 @@ export async function renderGallery(ctx) {
     const stage = el('div', { class: 'viewer-stage' });
     // Envoltorio con la MISMA relación de aspecto que el dibujo: así las zonas
     // interactivas caen exactamente sobre los objetos, sin bandas negras.
-    const docW = d.doc?.w || 1080, docH = d.doc?.h || 1440;
+    const docW = d.w || d.doc?.w || 1080, docH = d.h || d.doc?.h || 1440;
     const wrap = el('div', { class: 'viewer-wrap', style: { aspectRatio: `${docW} / ${docH}` } });
     const img = el('img', { class: 'viewer-img', src: d.thumb, alt: d.title || '' });
     wrap.append(img);

@@ -101,7 +101,7 @@ async function routeInitial() {
   go('login');
 }
 function goHomeOr(routeParam) {
-  if (routeParam && ['home', 'studio', 'gallery', 'chat', 'us', 'settings'].includes(routeParam)) go(routeParam);
+  if (routeParam && ['home', 'studio', 'studio-new', 'gallery', 'chat', 'us', 'settings'].includes(routeParam)) go(routeParam);
   else go('home');
 }
 

@@ -1,0 +1,19 @@
+{
+  "name": "dibujo",
+  "version": "12.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dibujo — un espacio privado para dos. PWA de dibujo para parejas.",
+  "scripts": {
+    "build:vendor": "node scripts/build-vendor.mjs",
+    "build:www": "node scripts/build-www.mjs",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "devDependencies": {
+    "@tldraw/assets": "^5.3.0",
+    "esbuild": "^0.28.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tldraw": "^5.3.0"
+  }
+}

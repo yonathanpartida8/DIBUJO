@@ -353,3 +353,62 @@
   border-radius: 50%; background: var(--accent); border: calc(2px * var(--inv, 1)) solid #fff;
 }
 .ob-btn.ob-del { color: #e06a7e; }
+
+/* ============================================================
+   v12 — Lienzo tldraw integrado en la identidad de la app
+   ============================================================ */
+.tl-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.tl-host { position: absolute; inset: 0; }
+.tl-host .tl-container { border-radius: 0; }
+
+/* Carga del SDK */
+.tl-loading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px; color: var(--text-2); }
+.tl-loading-t { font-weight: 700; font-size: 0.92rem; }
+.tl-spinner {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--line-2); border-top-color: var(--primary);
+  animation: tlSpin 0.9s linear infinite;
+}
+@keyframes tlSpin { to { transform: rotate(360deg); } }
+
+/* Paleta de tldraw alineada con el tema pastel de la app */
+.tl-host .tl-theme__light {
+  --color-background: var(--surface);
+  --color-low: var(--surface-inset);
+  --color-panel: var(--surface);
+  --color-panel-contrast: var(--surface);
+  --color-selected: var(--primary);
+  --color-selection-stroke: var(--primary);
+  --color-focus: var(--primary);
+  --color-text-0: var(--text);
+  --color-text-1: var(--text-2);
+}
+/* Panel y barra con el redondeo y la sombra del resto de la app */
+.tl-host .tlui-layout__top__left .tlui-style-panel,
+.tl-host .tlui-toolbar__tools,
+.tl-host .tlui-style-panel,
+.tl-host .tlui-menu {
+  border-radius: var(--r-lg) !important;
+  box-shadow: 0 2px 6px rgba(70,45,60,.08), 0 16px 34px -16px rgba(70,45,60,.4) !important;
+  border: 1px solid var(--line) !important;
+}
+/* Objetivos táctiles cómodos en móvil */
+.tl-host .tlui-button { min-height: 44px; min-width: 44px; }
+.tl-host .tlui-toolbar { padding-bottom: calc(var(--safe-b) + 4px); }
+/* El botón de enviar de la app mantiene su color */
+.st-send { background: linear-gradient(135deg, var(--rose), var(--rose-deep)); border: none; }
+.st-send svg { fill: #fff; }
+/* Título en la barra superior */
+.st-title-btn { flex: 1; min-width: 0; background: none; border: none; padding: 0 6px; text-align: center; }
+.st-title-btn .n { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-title-btn .save-state { font-size: 0.68rem; color: var(--text-3); }
+.icon-btn:disabled { opacity: .35; pointer-events: none; }
+/* Acento de tldraw = rosa de la app (la herramienta activa deja de ser azul) */
+.tl-host .tl-theme__light, .tl-host .tl-theme__dark {
+  --color-selected: var(--rose-deep);
+  --color-selected-contrast: #fff;
+  --color-focus: var(--rose-deep);
+}
+.tl-host .tlui-button__tool[aria-pressed="true"],
+.tl-host .tlui-button[data-state="selected"] { background: var(--rose-deep) !important; color: #fff !important; }
+.tl-host .tlui-button__tool[aria-pressed="true"] .tlui-icon { color: #fff !important; }

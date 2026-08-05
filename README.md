@@ -5,6 +5,36 @@ distancia y en tiempo real. Interfaz premium en **español latino**, pastel
 refinado (no infantil), iconografía SVG profesional (sin emojis en la UI),
 inspirada en Procreate, Pinterest, iOS y liquid glass. Solo móvil.
 
+## Novedades v12 (editor sobre el SDK de tldraw)
+
+El lienzo pasa a estar impulsado por **tldraw 5**. Todo lo que rodea al editor
+sigue siendo de la app: título, borradores, guardado en IndexedDB, miniatura,
+Inbox, envío a la pareja con su animación, secretos, música, chat, Nosotros,
+ajustes y sincronización.
+
+- **Herramientas de tldraw**: selección, mano, lápiz/pincel, borrador, texto,
+  notas, flechas, líneas, formas, marcos y láser, con sus estilos (color,
+  grosor, relleno, tipografía), deshacer/rehacer y multitáctil real.
+- **Sin build en tiempo de ejecución**: tldraw + React se empaquetan una vez
+  con `npm run build:vendor` en `vendor/tldraw.bundle.js`, que se versiona en
+  el repo. La app se sigue sirviendo tal cual en GitHub Pages y en `file://`
+  (Capacitor), sin herramientas.
+- **Sin CDN**: fuentes, iconos y traducciones de tldraw se copian a
+  `vendor/assets/`, así el editor funciona sin conexión.
+- **Carga diferida**: el SDK (1.9 MB) solo se descarga al abrir el editor; el
+  arranque de la app sigue en ~17 recursos / 160 KB.
+- **Migración**: un dibujo hecho con el motor anterior se abre insertando su
+  imagen en el lienzo, para poder seguir trabajando encima sin perder nada.
+- **Correcciones**: el enlace profundo `?route=studio-new` caía en el inicio
+  en vez de abrir el editor; el visor ahora usa el tamaño real del dibujo
+  exportado para colocar bien su contenido.
+
+> Lo que cambia respecto al motor propio: la reproducción del proceso
+> («Ver proceso»), la regla física, el lápiz virtual de 1/2/3 dedos, las capas,
+> las texturas de papel y los objetos interactivos eran funciones del motor
+> anterior y **no** tienen equivalente en el modelo de documento de tldraw.
+> Los dibujos antiguos conservan su grabación y se siguen reproduciendo.
+
 ## Novedades v11 (rediseño de interfaz y rendimiento)
 
 **Inbox rediseñado por completo**
