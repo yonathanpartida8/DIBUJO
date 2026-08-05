@@ -128,5 +128,9 @@ export async function renderHome(ctx) {
     bus.on('sync:message', () => { const d = $('#hero-chat-dot'); if (d) d.hidden = false; }),
   ];
 
+  // Precarga el lienzo en segundo plano (import dinámico: no engorda el
+  // arranque) para que "Dibujar" abra al instante.
+  import('./studio.js').then((m) => m.prefetchEditor()).catch(() => {});
+
   return { leave: () => { aurora.destroy(); offs.forEach((o) => o()); } };
 }

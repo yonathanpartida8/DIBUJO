@@ -29,6 +29,28 @@ let dirty = false;
 
 const VENDOR = new URL('../../vendor/tldraw.bundle.js', import.meta.url).href;
 
+// Carga del SDK con un reintento: un corte de red puntual ya no deja el
+// editor colgado para siempre.
+let vendorPromise = null;
+export function loadVendor() {
+  if (!vendorPromise) {
+    vendorPromise = import(/* @vite-ignore */ VENDOR).catch(async (e) => {
+      await new Promise((r) => setTimeout(r, 800));
+      try { return await import(/* @vite-ignore */ VENDOR + '?retry=1'); }
+      catch (e2) { vendorPromise = null; throw e2; }
+    });
+  }
+  return vendorPromise;
+}
+// Precarga en segundo plano (la llama el Inicio cuando el hilo está libre):
+// al tocar "Dibujar" el lienzo ya está en memoria y abre al instante.
+export function prefetchEditor() {
+  if (vendorPromise) return;
+  const start = () => { loadVendor().catch(() => {}); };
+  if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 4000 });
+  else setTimeout(start, 1500);
+}
+
 export async function renderStudio(ctx) {
   current = null; editor = null; tl = null; dirty = false; skipSaveOnLeave = false;
 
@@ -51,17 +73,31 @@ export async function renderStudio(ctx) {
   const id = ctx.params?.id;
   if (id) current = await db.get('drawings', id);
 
-  let mod;
+  // El SDK pesa ~1.9 MB: en móvil con mala señal puede tardar. Avisamos del
+  // progreso y ofrecemos reintentar en vez de dejar la pantalla en blanco.
+  const slow = setTimeout(() => {
+    const tx = loading.querySelector('.tl-loading-t');
+    if (tx) tx.textContent = 'Descargando el lienzo… (solo la primera vez)';
+  }, 2500);
+  let mod = null;
   try {
-    mod = await import(/* @vite-ignore */ VENDOR);
+    mod = await loadVendor();
   } catch (e) {
     console.error('tldraw no disponible', e);
+  }
+  clearTimeout(slow);
+  if (!mod) {
     loading.remove();
-    stage.append(el('div', { class: 'tl-loading' }, [
+    const box = el('div', { class: 'tl-loading' }, [
       el('div', { class: 'big-ic big-ic-lg', html: icon('info') }),
       el('div', { class: 'tl-loading-t', text: 'No se pudo cargar el lienzo' }),
-      el('button', { class: 'btn btn-primary', style: { marginTop: '12px' }, text: 'Volver', onclick: () => go('home') }),
-    ]));
+      el('div', { style: { color: 'var(--text-2)', fontSize: '.85rem', textAlign: 'center', maxWidth: '26ch' }, text: 'Revisa tu conexión e inténtalo otra vez.' }),
+      el('div', { style: { display: 'flex', gap: '8px', marginTop: '12px' } }, [
+        el('button', { class: 'btn btn-primary', text: 'Reintentar', onclick: () => go('studio-new') }),
+        el('button', { class: 'btn btn-ghost', text: 'Volver', onclick: () => go('home') }),
+      ]),
+    ]);
+    stage.append(box);
     return { leave: () => {} };
   }
   api = mod.api;
@@ -80,9 +116,15 @@ export async function renderStudio(ctx) {
     components: { MainMenu: null, PageMenu: null, DebugPanel: null, DebugMenu: null, HelpMenu: null, NavigationPanel: null },
     onMount: (ed) => {
       editor = ed;
-      // Cambios del documento → guardado diferido + estado de deshacer.
-      ed.store.listen(() => { markDirty(); syncUndoRedo(); }, { scope: 'document', source: 'user' });
-      ed.store.listen(() => syncUndoRedo(), { scope: 'all' });
+      // UN solo oyente y con el trabajo agrupado por frame. Antes había dos y
+      // cada uno tocaba el DOM en CADA cambio del store: al dibujar eso son
+      // cientos de veces por segundo y el editor se trababa.
+      let queued = false;
+      ed.store.listen(() => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => { queued = false; markDirty(); syncUndoRedo(); });
+      }, { scope: 'document', source: 'user' });
     },
   });
 
@@ -107,7 +149,7 @@ export async function renderStudio(ctx) {
 
   return {
     leave: async () => {
-      clearTimeout(saveTimer);
+      clearTimeout(saveTimer); saveTimer = null;
       if (!skipSaveOnLeave && dirty) await doSave(false);
       try { const { stopAllMusic } = await import('./vinyl.js'); stopAllMusic(); } catch {}
       try { tl?.destroy(); } catch {}
@@ -167,10 +209,12 @@ async function renameDrawing() {
 
 // ---------- Guardado ----------
 function markDirty() {
+  if (!dirty) { const s = $('#st-savestate'); if (s) s.textContent = 'sin guardar'; }
   dirty = true;
-  const s = $('#st-savestate'); if (s) s.textContent = 'sin guardar';
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => doSave(false), 1500);
+  // Un único guardado programado: no se reinicia el temporizador en cada
+  // cambio (si no, dibujando sin parar no llegaba a guardar nunca).
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => { saveTimer = null; doSave(false); }, 2000);
 }
 function ensureDoc() {
   if (!current) current = { id: uid('draw'), createdAt: Date.now(), folderId: null, favorite: false, comments: [], reactions: {}, owner: 'me' };

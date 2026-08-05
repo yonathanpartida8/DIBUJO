@@ -1,5 +1,5 @@
 // Service worker — offline-first app shell for Dibujo PWA.
-const VERSION = 'dibujo-v12.0.0';
+const VERSION = 'dibujo-v13.0.0';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 
@@ -35,8 +35,6 @@ const SHELL_ASSETS = [
   './js/drawing/recorder.js',
   './js/drawing/player.js',
   './js/drawing/ruler.js',
-  './vendor/tldraw.bundle.js',
-  './vendor/tldraw.css',
   './js/gl/aurora.js',
   './js/gl/canvas-gl.js',
   './js/media/klipy.js',
@@ -64,9 +62,14 @@ const SHELL_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(SHELL).then((cache) => cache.addAll(SHELL_ASSETS)).then(() => self.skipWaiting())
-  );
+  // addAll es atómico: si UN archivo falla, la instalación entera falla y el
+  // service worker viejo se queda para siempre sirviendo código antiguo.
+  // Con allSettled la actualización siempre entra, aunque algo no se cachee.
+  event.waitUntil((async () => {
+    const cache = await caches.open(SHELL);
+    await Promise.allSettled(SHELL_ASSETS.map((u) => cache.add(u)));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
@@ -110,7 +113,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: stale-while-revalidate.
+  // CÓDIGO (js/css): red primero, caché solo como respaldo sin conexión.
+  // Con stale-while-revalidate el navegador servía JS viejo junto a archivos
+  // nuevos y la app quedaba en un estado mezclado (pantallas en blanco y
+  // errores raros tras cada actualización).
+  const isCode = /\.(js|mjs|css)$/i.test(url.pathname);
+  if (isCode) {
+    event.respondWith((async () => {
+      try {
+        const res = await fetch(req);
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(RUNTIME).then((c) => c.put(req, copy));
+        }
+        return res;
+      } catch {
+        return (await caches.match(req)) || new Response('', { status: 504 });
+      }
+    })());
+    return;
+  }
+
+  // Resto (imágenes, fuentes, iconos): caché primero, se refresca de fondo.
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req)
